@@ -16,6 +16,7 @@ import '../../widgets/ui/capsule_switcher.dart';
 import '../../widgets/biz/section_card.dart';
 import '../../styles/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../utils/ohos_feature_gate.dart';
 
 // GitHub配置教程链接
 const _kSupabaseGuideUrl = 'https://github.com/TNT-Likely/BeeCount/wiki/Supabase-%E4%BA%91%E5%90%8C%E6%AD%A5%E9%85%8D%E7%BD%AE';
@@ -225,8 +226,9 @@ class _CloudServicePageState extends ConsumerState<CloudServicePage> {
 
                       const SizedBox(height: 12),
 
-                      // Supabase
-                      supabaseAsync.when(
+                      // Supabase（OHOS 版不提供 Supabase 同步，B5 范围裁剪）
+                      if (OhosFeatureGate.enableSupabaseSync)
+                        supabaseAsync.when(
                         loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
                         error: (e, _) => const SizedBox.shrink(),
                         data: (supabaseCfg) => _buildServiceCard(

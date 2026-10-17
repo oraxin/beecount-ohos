@@ -44,6 +44,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_review/in_app_review.dart';
 import '../../services/system/update_service.dart';
+import '../../utils/ohos_feature_gate.dart';
 import '../../utils/ui_scale_extensions.dart';
 import '../donation/donation_page.dart';
 
@@ -490,20 +491,22 @@ class MinePage extends ConsumerWidget {
                         },
                       ),
                       BeeTokens.cardDivider(context),
-                      // 分享海报
-                      AppListTile(
-                        leading: Icons.ios_share_rounded,
-                        title: AppLocalizations.of(context).mineShareApp,
-                        subtitle:
-                            AppLocalizations.of(context).mineShareWithFriends,
-                        trailing: Icon(Icons.chevron_right,
-                            color: BeeTokens.iconTertiary(context), size: 20),
-                        onTap: () {
-                          // 打开海报轮播预览对话框（支持年度、月度、总览3种海报）
-                          SharePosterService.showPosterCarouselPreview(context);
-                        },
-                      ),
-                      BeeTokens.cardDivider(context),
+                      // 分享海报（OHOS 版暂不提供，C6 范围外）
+                      if (OhosFeatureGate.enablePosterShare) ...[
+                        AppListTile(
+                          leading: Icons.ios_share_rounded,
+                          title: AppLocalizations.of(context).mineShareApp,
+                          subtitle:
+                              AppLocalizations.of(context).mineShareWithFriends,
+                          trailing: Icon(Icons.chevron_right,
+                              color: BeeTokens.iconTertiary(context), size: 20),
+                          onTap: () {
+                            // 打开海报轮播预览对话框（支持年度、月度、总览3种海报）
+                            SharePosterService.showPosterCarouselPreview(context);
+                          },
+                        ),
+                        BeeTokens.cardDivider(context),
+                      ],
                       // 复制推广文案
                       AppListTile(
                         leading: Icons.content_copy_rounded,

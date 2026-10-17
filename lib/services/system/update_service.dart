@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'logger_service.dart';
+import '../../utils/ohos_feature_gate.dart';
 import '../../widgets/ui/ui.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -61,6 +62,13 @@ class UpdateService {
 
   /// 检查更新信息
   static Future<UpdateResult> checkUpdate() async {
+    // OHOS 版不提供应用内更新（D4），由 AppGallery 负责版本更新
+    if (!OhosFeatureGate.enableInAppUpdate) {
+      return UpdateResult(
+        hasUpdate: false,
+        message: AppLocalizations.current.updateAlreadyLatest,
+      );
+    }
     return UpdateChecker.checkUpdate();
   }
 

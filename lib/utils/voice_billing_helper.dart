@@ -17,6 +17,7 @@ import '../services/billing/post_processor.dart';
 import '../services/data/tag_seed_service.dart';
 import '../widgets/ui/ui.dart';
 import '../styles/tokens.dart';
+import 'ohos_feature_gate.dart';
 
 /// 语音记账帮助类
 class VoiceBillingHelper {
@@ -26,6 +27,12 @@ class VoiceBillingHelper {
     WidgetRef ref,
   ) async {
     final l10n = AppLocalizations.of(context);
+
+    // OHOS 版暂不提供语音记账（C2），提示不可用
+    if (!OhosFeatureGate.enableVoiceBilling) {
+      showToast(context, l10n.fabActionVoiceDisabled);
+      return;
+    }
 
     try {
       // 0. 确保 AI 配置已加载完成（修复首次使用报错问题）
