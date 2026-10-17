@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../utils/ohos_feature_gate.dart';
 import '../../widgets/ui/ui.dart';
 import '../../providers.dart';
 import '../../styles/tokens.dart';
@@ -106,6 +107,8 @@ class SharePosterService {
 
   /// 分享海报
   static Future<void> sharePoster(Uint8List imageBytes) async {
+    // OHOS 版暂不提供系统分享（share_plus 无官方适配，C6 范围外）
+    if (!OhosFeatureGate.enablePosterShare) return;
     try {
       // 获取临时目录
       final tempDir = await getTemporaryDirectory();
@@ -393,6 +396,8 @@ class _PosterPreviewDialogState extends State<_PosterPreviewDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
+                // 分享按钮（OHOS 版暂不提供，C6 范围外）
+                if (OhosFeatureGate.enablePosterShare) ...[
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _isSaving ? null : _sharePoster,
@@ -412,6 +417,7 @@ class _PosterPreviewDialogState extends State<_PosterPreviewDialog> {
                     ),
                   ),
                 ),
+                ],
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
@@ -961,6 +967,8 @@ class _PosterCarouselPreviewDialogState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
+                // 分享按钮（OHOS 版暂不提供，C6 范围外）
+                if (OhosFeatureGate.enablePosterShare) ...[
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: (cachedPoster == null || isGenerating || _isSaving)
@@ -982,6 +990,7 @@ class _PosterCarouselPreviewDialogState
                     ),
                   ),
                 ),
+                ],
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
@@ -1271,6 +1280,8 @@ class _DynamicPosterPreviewDialogState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
+                // 分享按钮（OHOS 版暂不提供，C6 范围外）
+                if (OhosFeatureGate.enablePosterShare) ...[
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: (_posterImage == null || _isGenerating || _isSaving)
@@ -1292,6 +1303,7 @@ class _DynamicPosterPreviewDialogState
                     ),
                   ),
                 ),
+                ],
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(

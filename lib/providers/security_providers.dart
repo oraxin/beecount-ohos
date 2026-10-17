@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/security/app_lock_service.dart';
+import '../utils/ohos_feature_gate.dart';
 
 // 应用是否处于锁定状态
 final isAppLockedProvider = StateProvider<bool>((ref) => false);
@@ -19,6 +20,9 @@ final appLockTimeoutProvider = StateProvider<int>((ref) => 0);
 
 // 初始化安全相关 Provider（在 splash 阶段调用）
 final securityInitProvider = FutureProvider<void>((ref) async {
+  // OHOS 版暂不提供应用锁/生物识别（C3），保持默认关闭状态
+  if (!OhosFeatureGate.enableAppLock) return;
+
   final prefs = await SharedPreferences.getInstance();
 
   // 读取应用锁状态

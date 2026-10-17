@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers.dart';
 import '../../utils/month_range.dart';
 import '../../utils/currencies.dart';
+import '../../utils/ohos_feature_gate.dart';
 import '../../widgets/ui/ui.dart';
 import '../../widgets/posters/annual_report_poster.dart';
 import '../../data/db.dart';
@@ -1997,15 +1998,17 @@ class _AnnualReportPosterPreviewState
                     onTap: _isGenerating ? null : () => _savePoster(context),
                     isPrimary: true,
                   ),
-                  const SizedBox(width: 16),
-                  // 分享按钮
-                  _buildActionButton(
-                    context: context,
-                    icon: Icons.share,
-                    label: l10n.sharePosterShare,
-                    onTap: _isGenerating ? null : () => _sharePoster(context),
-                    isPrimary: false,
-                  ),
+                  // 分享按钮（OHOS 版暂不提供，C6 范围外）
+                  if (OhosFeatureGate.enablePosterShare) ...[
+                    const SizedBox(width: 16),
+                    _buildActionButton(
+                      context: context,
+                      icon: Icons.share,
+                      label: l10n.sharePosterShare,
+                      onTap: _isGenerating ? null : () => _sharePoster(context),
+                      isPrimary: false,
+                    ),
+                  ],
                 ],
               ),
             ],
