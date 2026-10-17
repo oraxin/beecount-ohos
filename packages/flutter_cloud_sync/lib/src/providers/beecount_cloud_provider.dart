@@ -1475,6 +1475,11 @@ class BeeCountCloudAuthService implements CloudAuthService {
               fallback: deviceName,
             );
             break;
+          // OHOS（CPF-Flutter 的 TargetPlatform 枚举新增值）：device_info_plus
+          // 无 OHOS 实现，仅标记平台，其余字段保留 fallback。
+          case TargetPlatform.ohos:
+            platform = 'ohos';
+            break;
           case TargetPlatform.fuchsia:
             platform = 'fuchsia';
             break;
