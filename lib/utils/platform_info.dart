@@ -9,6 +9,15 @@ class PlatformInfo {
   /// 检查是否为Android平台
   static bool get isAndroid => !kIsWeb && Platform.isAndroid;
 
+  /// 检查是否为 OpenHarmony / HarmonyOS 平台（Flutter-OH 适配版）
+  ///
+  /// ⚠️ P0 验证点：CPF-Flutter flutter_flutter(ohos 适配版) 的 dart:io
+  /// Platform.operatingSystem 预期返回 'ohos'。若实测返回 'android'，
+  /// 需调整此检测逻辑（见 wiki/08 方案 P0 报告），否则 OHOS 会被误判为
+  /// Android，导致 Android 专属代码（截图监听/分享接收等）被放出来。
+  static bool get isOhos =>
+      !kIsWeb && Platform.operatingSystem == 'ohos';
+
   /// 获取iOS主版本号
   /// 返回 null 如果不是iOS平台
   static int? get iOSMajorVersion {
