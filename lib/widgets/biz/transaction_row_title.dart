@@ -12,10 +12,13 @@ class TransactionRowTitle {
 ///   = 分类优先(分类为主,备注挂括号)。
 /// - [categoryName]: 分类显示名;转账/调整等无分类的行传 null —— 不受 mode 影响。
 /// - [title]: 普通行里即备注;转账/调整里是其标题文案(可能为空串)。
+/// - [includeParenNote]: 为 false 时不追加括号备注（用于「备注独立一行」的
+///   布局——分类名独占第一行，备注由调用方渲染为第二行）。
 TransactionRowTitle composeTransactionRowTitle({
   required String mode,
   required String? categoryName,
   required String title,
+  bool includeParenNote = true,
 }) {
   // 备注优先:仅普通行(有分类)且确有备注时,备注取代分类作主文本。
   if (mode == 'note' && categoryName != null && title.isNotEmpty) {
@@ -23,7 +26,10 @@ TransactionRowTitle composeTransactionRowTitle({
   }
   // 分类优先(默认),以及转账/调整(categoryName == null)—— 保持原有行为。
   final primary = categoryName ?? title;
-  final paren = (categoryName != null && title.isNotEmpty && title != categoryName)
+  final paren = (includeParenNote &&
+          categoryName != null &&
+          title.isNotEmpty &&
+          title != categoryName)
       ? title
       : null;
   return TransactionRowTitle(primary, paren);
