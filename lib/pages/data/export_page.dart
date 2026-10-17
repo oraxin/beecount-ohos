@@ -13,6 +13,7 @@ import '../../data/repositories/base_repository.dart';
 import '../../data/db.dart';
 import '../../widgets/ui/ui.dart';
 import '../../utils/category_utils.dart';
+import '../../utils/platform_info.dart';
 
 class ExportPage extends ConsumerStatefulWidget {
   const ExportPage({super.key});
@@ -84,8 +85,10 @@ class _ExportPageState extends ConsumerState<ExportPage> {
       });
       String directory;
       bool shareAfter = false;
-      if (Platform.isIOS) {
-        // iOS: 写入应用文档目录，然后使用系统分享
+      if (Platform.isIOS || PlatformInfo.isOhos) {
+        // iOS/OHOS: 写入应用文档目录，然后使用系统分享。
+        // OHOS 没有 /storage/emulated/0 公共目录（PathAccessException），
+        // 与 iOS 一致走沙箱目录 + Share.shareXFiles。
         final docDir = await getApplicationDocumentsDirectory();
         directory = docDir.path;
         shareAfter = true;

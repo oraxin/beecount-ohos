@@ -15,6 +15,7 @@ import '../../styles/tokens.dart';
 import '../../services/billing/post_processor.dart';
 import '../../services/custom_icon_service.dart';
 import '../../services/system/logger_service.dart';
+import '../../utils/platform_info.dart';
 import '../transaction/category_detail_page.dart';
 import 'category_migration_page.dart';
 
@@ -798,6 +799,10 @@ class _CategoryEditPageState extends ConsumerState<CategoryEditPage> {
             resetAspectRatioEnabled: false,
             aspectRatioPickerButtonHidden: true,
           ),
+          // OHOS:CPF 适配版实现走 Flutter 自绘 CropWidget（channel imagecropper），
+          // 需要从 WebUiSettings 拿 BuildContext 做路由跳转；不给 context 时
+          // cropImage 会静默返回 null（见 MethodChannelImagecropperOhos.cropImage）。
+          if (PlatformInfo.isOhos) WebUiSettings(context: context),
         ],
       );
 

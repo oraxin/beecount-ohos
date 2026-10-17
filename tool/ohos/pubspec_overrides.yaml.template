@@ -2,7 +2,9 @@
 # pubspec_overrides.yaml 使用，根目录副本已被 .gitignore 忽略勿提交）：
 #   Copy-Item tool\ohos\pubspec_overrides.yaml.template pubspec_overrides.yaml
 # 用途：仅影响当前工作区的依赖解析；构建 Android/iOS 时删除根目录副本即可回到官方依赖。
-# 状态：v0.1.0 真机（OpenHarmony 7.0 / API 26）构建+运行全链路验证通过（2026-10-17）。
+# 状态：v0.1.0 真机（OpenHarmony 7.0 / API 26）构建+运行全链路验证通过（2026-10-17）；
+#       v0.2.0 新增功能插件注入（file_picker/share_plus/image_cropper 等降版本，
+#       分支名经 gitcode API 核实），待真机功能走查后收敛。
 #
 # ⚠️ 本文件存在时会【整体替换】pubspec.yaml 的 dependency_overrides 段，
 # 因此官方 pin（record / image_cropper_platform_interface）必须在此镜像，
@@ -11,7 +13,15 @@
 dependency_overrides:
   # ---- 镜像 pubspec.yaml 的官方 pin ----
   record_platform_interface: 1.2.0
-  image_cropper_platform_interface: 7.1.0
+  # image_cropper_platform_interface：官方 pin 7.1.0；OHOS 必须用 CPF 同版本号
+  # 适配版（多一个 _createDefaultInstance 的 ohos 分支 → MethodChannelImagecropperOhos，
+  # channel "imagecropper" 与 OHOS 原生 ImagecropperOhosPlugin 匹配）。官方 hosted
+  # 7.1.0 无该分支，OHOS 上会报 MissingPluginException(cropImage)。
+  image_cropper_platform_interface:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_image_cropper
+      path: image_cropper_platform_interface
+      ref: br_v9.1.0_ohos
 
   # sqflite 的 OHOS RDB 实现（drift 走 SqfliteQueryExecutor 时的底层驱动）
   sqflite:
@@ -31,4 +41,59 @@ dependency_overrides:
     git:
       url: https://gitcode.com/CPF-Flutter/flutter_packages.git
       path: packages/shared_preferences/shared_preferences_ohos
+      ref: master
+
+  # ---- v0.2.0 功能插件（CPF 适配版，分支名经 gitcode API 核实 2026-10-17）----
+  # web：file_picker 8.0.7 声明 web ^0.5.1、share_plus 12.0.1 声明 web ^1.0.0，
+  # 解析冲突。两者在非 web 平台均经条件 import 走 stub、不触碰 package:web 的
+  # 1.0 破坏面，统一顶到 1.x。
+  web: ^1.0.0
+
+  # file_picker：官方 ^8.1.2 无 OHOS 实现，CPF v8 系分支最新为 8.0.7（包在仓库根）。
+  file_picker:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_file_picker
+      ref: br_v8.0.7_ohos
+
+  # share_plus：CPF 分支 br_share_plus-v12.0.1_ohos 与官方 ^12.0.1 完全同版本。
+  # 其 platform_interface 把 path_provider 声明为 git 源，这里钉回 hosted
+  # （OHOS 侧能力由下方 path_provider_ohos 提供，无需该 fork）。
+  share_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins
+      path: packages/share_plus/share_plus
+      ref: br_share_plus-v12.0.1_ohos
+  path_provider: ^2.1.4
+
+  # image_cropper：官方 ^10.0.0 的 interface 7.2.0 需 Flutter 3.27.6+，降为
+  # 9.1.0（其 interface 与上方 pin 的 7.1.0 匹配）。
+  image_cropper:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_image_cropper
+      path: image_cropper
+      ref: br_v9.1.0_ohos
+
+  # connectivity_plus / package_info_plus：CPF 仅提供 7.0.0 / 9.0.0 适配，
+  # 主包大版本被顶替，API 差异在编译期验证（两者仅云同步提示/版本号展示用到）。
+  connectivity_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins
+      path: packages/connectivity_plus/connectivity_plus
+      ref: br_connectivity_plus-v7.0.0_ohos
+  package_info_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins
+      path: packages/package_info_plus/package_info_plus
+      ref: br_package_info_plus-v9.0.0_ohos
+
+  # url_launcher / image_picker 的 OHOS 平台实现（联合插件不自动 endorsed）。
+  url_launcher_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/url_launcher/url_launcher_ohos
+      ref: master
+  image_picker_ohos:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/image_picker/image_picker_ohos
       ref: master
