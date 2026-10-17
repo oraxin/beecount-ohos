@@ -314,13 +314,14 @@ packages:
     source: hosted
     version: "3.2.6"
   device_info_plus:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: device_info_plus
-      sha256: "72d146c6d7098689ff5c5f66bcf593ac11efc530095385356e131070333e64da"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "11.3.0"
+      path: "packages/device_info_plus/device_info_plus"
+      ref: "br_device_info_plus_v11.4.0_ohos_dev"
+      resolved-ref: "9f8cc41353907c392eed2dcc502e2056f21b407e"
+      url: "https://gitcode.com/CPF-Flutter/flutter_plus_plugins"
+    source: git
+    version: "9.1.0"
   device_info_plus_platform_interface:
     dependency: transitive
     description:
