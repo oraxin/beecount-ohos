@@ -34,9 +34,24 @@ git -C flutter_flutter checkout 3.27.5-ohos-1.0.8
 Copy-Item tool\ohos\pubspec_overrides.yaml.template pubspec_overrides.yaml
 ```
 
-模板中 CPF 插件以 git 依赖形式指向 CPF-Flutter 仓库的 3.27 分支。
-P0 逐项核对分支名与版本后启用（模板内已按 2026-10-17 查证的适配清单填写，
-部分条目需确认分支是否存在）。
+模板内容已按 v0.1.0 真机验证结果填写（sqflite OHOS RDB 驱动 +
+path_provider_ohos / shared_preferences_ohos 平台实现 + 镜像官方 pin）。
+
+⚠️ 注意：pubspec_overrides.yaml 存在时会**整体替换** pubspec.yaml 的
+`dependency_overrides` 段，官方 pin 必须在模板中镜像。
+
+## 2.1 PUB_CACHE 硬约束（Windows）
+
+`PUB_CACHE` 必须设置为**与项目同盘（D:）的真实目录**（见
+`tool/ohos/ohos-env.ps1`），原因有二：
+
+1. hvigor 为插件生成**相对** srcPath；Windows 的 `path.relative` 无法跨盘
+   （项目在 D:、默认 pub 缓存在 C:），跨盘会生成绝对路径并报
+   `00303231 The srcPath is not a relative path`。
+2. hvigor 校验 `fs.realpathSync.native(path) === path`，junction/软链会被
+   解析回真实路径导致不相等，报 `00303149 Path not found`。
+
+首次 `pub get` 会重新下载 hosted/git 包到该缓存。
 
 ## 3. P0 验证清单（go/no-go）
 

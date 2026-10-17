@@ -1,0 +1,55 @@
+
+{
+  "app": {
+    // 调试签名：复用 DevEco AGC 自动签发的调试证书材料（含密文密码，仅本机有效）。
+    // bundleName 必须与 .p7b Profile 内包名一致（见 AppScope/app.json5）。
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\wangxin\\.ohos\\config\\default_MyApplication_33amhwJvaUNOhKNSG2kiJ-YRl4eRJ4CxnX87PNvx7GE=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001A57C997C8145B314BA2A9698C844CC704E6F01EF648572BCA536B528A9808B47DA0DA2D4FC4E3",
+          "profile": "C:\\Users\\wangxin\\.ohos\\config\\default_MyApplication_33amhwJvaUNOhKNSG2kiJ-YRl4eRJ4CxnX87PNvx7GE=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\wangxin\\.ohos\\config\\default_MyApplication_33amhwJvaUNOhKNSG2kiJ-YRl4eRJ4CxnX87PNvx7GE=.p12",
+          "storePassword": "0000001AF15CEC9D55687C7FA690A4BB142E0EFEC8383596DBB321A5F717C3127EC2A87E71F6093F2A3B"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -64,9 +64,13 @@ class UpdateService {
   static Future<UpdateResult> checkUpdate() async {
     // OHOS 版不提供应用内更新（D4），由 AppGallery 负责版本更新
     if (!OhosFeatureGate.enableInAppUpdate) {
+      // 无 BuildContext，返回占位符，展示层经 _localizeUpdateMessage 本地化
+      // （与 UpdateChecker.checkUpdate 的 '__UPDATE_ALREADY_LATEST_SIMPLE__'
+      // 同一模式；不直接用 AppLocalizations.current——CPF 3.27.5 的 gen-l10n
+      // 尚无该静态查找器）。
       return UpdateResult(
         hasUpdate: false,
-        message: AppLocalizations.current.updateAlreadyLatest,
+        message: '__UPDATE_ALREADY_LATEST_SIMPLE__',
       );
     }
     return UpdateChecker.checkUpdate();

@@ -3,10 +3,14 @@ import 'dart:ui' show Locale;
 
 import 'package:drift/drift.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/platform_info.dart';
 import '../services/data/category_service.dart';
 import '../services/data/seed_service.dart';
 import '../services/system/logger_service.dart';
 import 'package:drift/native.dart';
+// OHOS 走 sqflite(RDB) 驱动（P0 双路径验证结论，见 tool/ohos/README.md）；
+// 其他平台仍用 NativeDatabase，本包为纯 Dart，不影响 Android/iOS。
+import 'package:drift_sqflite/drift_sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -1343,6 +1347,13 @@ class BeeDatabase extends _$BeeDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
+    // OHOS：sqlite3 包不识别 'ohos' 平台（_defaultOpen 直接 throw），FFI 直连
+    // 不可用；改用 sqflite(RDB) 驱动，由 CPF 的 flutter_sqflite 适配层落到
+    // 鸿蒙关系型数据库。相对路径由 sqflite 解析到应用沙箱数据库目录。
+    if (PlatformInfo.isOhos) {
+      return SqfliteQueryExecutor(path: 'beecount.sqlite');
+    }
+
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'beecount.sqlite'));
 
