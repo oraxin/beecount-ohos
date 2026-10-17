@@ -25,6 +25,7 @@ import '../currency/currency_flag.dart';
 import '../ui/toast.dart';
 import 'tag_chip.dart';
 import '../../pages/attachment/attachment_preview_page.dart';
+import '../../services/system/logger_service.dart';
 
 /// 共享账本 tx 作者信息(创建人 + 最后编辑人)— 编辑器底部 sheet 用。
 /// editingTransactionId=null(新建 tx)或非共享账本 → 返 null,widget 不渲染。
@@ -211,7 +212,9 @@ class AmountEditorSheet extends ConsumerStatefulWidget {
   final List<int>? initialTagIds; // 初始标签ID列表
   final bool showAccountPicker; // 是否显示账户选择
   final bool allowContinueAdding; // 双击完成后回到分类选择继续新建
-  final ValueChanged<AmountEditorResult> onSubmit;
+  /// 提交回调。返回 Future 以便 sheet 等待保存完成：失败时复位提交状态，
+  /// 否则「完成」按钮的 _isSubmitting 转圈永远不会消失（OHOS 真机 bug）。
+  final Future<void> Function(AmountEditorResult) onSubmit;
   final int ledgerId;
   final int? editingTransactionId; // 编辑模式时的交易ID，用于显示已有附件
   final String transactionKind; // 'expense' / 'income' / 'transfer'，决定标记开关可见性
@@ -420,7 +423,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
     if (picked == null || !mounted) return;
     setState(() {
-      _pickedCurrency = picked.toUpperCase() == base ? null : picked.toUpperCase();
+      _pickedCurrency =
+          picked.toUpperCase() == base ? null : picked.toUpperCase();
       // 换币种后隐含/手改汇率作废,重新带有效汇率
       _rateStr = null;
       _rateManuallySet = false;
@@ -444,7 +448,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-            hintText: '1 ${_txCurrency()} = ? ${ref.read(currentLedgerCurrencyProvider)}',
+            hintText:
+                '1 ${_txCurrency()} = ? ${ref.read(currentLedgerCurrencyProvider)}',
           ),
         ),
         actions: [
@@ -587,7 +592,7 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     SystemSound.play(SystemSoundType.click);
   }
 
-  void _submit({required bool continueAdding}) {
+  Future<void> _submit({required bool continueAdding}) async {
     if (_isSubmitting || !mounted) return;
 
     final current = double.tryParse(_amountStr) ?? 0.0;
@@ -616,19 +621,29 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
 
     HapticFeedback.lightImpact();
     SystemSound.play(SystemSoundType.click);
-    widget.onSubmit((
-      amount: total.abs(), // 始终正数
-      continueAdding: continueAdding,
-      note: _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
-      date: _date,
-      accountId: _selectedAccountId,
-      tagIds: _selectedTagIds,
-      pendingAttachments: _pendingAttachments,
-      excludeFromStats: _excludeFromStats,
-      excludeFromBudget: _excludeFromBudget,
-      currencyCode: txCurrency,
-      nativeAmount: nativeAmount,
-    ));
+    try {
+      await widget.onSubmit((
+        amount: total.abs(), // 始终正数
+        continueAdding: continueAdding,
+        note: _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
+        date: _date,
+        accountId: _selectedAccountId,
+        tagIds: _selectedTagIds,
+        pendingAttachments: _pendingAttachments,
+        excludeFromStats: _excludeFromStats,
+        excludeFromBudget: _excludeFromBudget,
+        currencyCode: txCurrency,
+        nativeAmount: nativeAmount,
+      ));
+    } catch (e, stack) {
+      // 保存失败必须复位提交状态并给出反馈，否则「完成」按钮永久转圈
+      // （数据可能已部分写入，由调用方负责一致性）。
+      logger.error('AmountEditorSheet', '提交交易失败', e, stack);
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        showToast(context, AppLocalizations.of(context).commonFailed);
+      }
+    }
   }
 
   // 旧 _toggleSign 已废弃，符号由类别含义决定
@@ -714,7 +729,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     // 如果备注框有焦点且键盘弹出，固定增加100的padding
-    final extraPadding = (_noteFieldHasFocus && keyboardHeight > 0) ? 100.0 : 0.0;
+    final extraPadding =
+        (_noteFieldHasFocus && keyboardHeight > 0) ? 100.0 : 0.0;
 
     double parsed() => double.tryParse(_amountStr) ?? 0.0;
 
@@ -781,8 +797,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     // 运算符键:同时显示「加减」与「乘除」两组运算符;当前激活的一组用主色高亮、
     // 另一组用次级色弱化(主次区分,也作为"长按可切到乘除"的提示)。单击应用激活
     // 运算符,长按切换加减 ↔ 乘除。
-    Widget opKey(String addSubOp, String mulDivOp, bool isMul,
-        VoidCallback onToggle) {
+    Widget opKey(
+        String addSubOp, String mulDivOp, bool isMul, VoidCallback onToggle) {
       final activeOp = isMul ? mulDivOp : addSubOp;
       // 激活的运算符与数字键完全一致(字号 18 / w600),保证视觉粗细相同 —— 字号
       // 更大即使同 weight 笔画也会更粗。未激活更小(14)+ 灰色以分主次。
@@ -837,7 +853,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     }
 
     String fmtDate(DateTime d) => '${d.year}/${d.month}/${d.day}';
-    String fmtTime(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}:${d.second.toString().padLeft(2, '0')}';
+    String fmtTime(DateTime d) =>
+        '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}:${d.second.toString().padLeft(2, '0')}';
     final showTime = ref.watch(showTransactionTimeProvider);
 
     return SafeArea(
@@ -878,7 +895,9 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                           final r1 = s.contains('.')
                               ? s.replaceFirst(RegExp(r'0+$'), '')
                               : s;
-                          return r1.endsWith('.') ? r1.substring(0, r1.length - 1) : r1;
+                          return r1.endsWith('.')
+                              ? r1.substring(0, r1.length - 1)
+                              : r1;
                         })(),
                         style: text.titleMedium?.copyWith(
                           fontWeight: FontWeight.w500,
@@ -929,7 +948,9 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                           final r1 = s.contains('.')
                               ? s.replaceFirst(RegExp(r'0+$'), '')
                               : s;
-                          return r1.endsWith('.') ? r1.substring(0, r1.length - 1) : r1;
+                          return r1.endsWith('.')
+                              ? r1.substring(0, r1.length - 1)
+                              : r1;
                         })(),
                         style: text.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
@@ -1064,14 +1085,16 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                                       Text(
                                         fmtDate(_date),
                                         style: text.labelSmall?.copyWith(
-                                            color: BeeTokens.textPrimary(context),
+                                            color:
+                                                BeeTokens.textPrimary(context),
                                             fontWeight: FontWeight.w600),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         fmtTime(_date),
                                         style: text.labelSmall?.copyWith(
-                                            color: BeeTokens.textSecondary(context),
+                                            color: BeeTokens.textSecondary(
+                                                context),
                                             fontWeight: FontWeight.w500),
                                       ),
                                     ],
@@ -1111,7 +1134,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
 
                 // 判断是否处于运算模式
                 final isInCalcMode = _op != null;
-                final isEnabled = (isInCalcMode ? true : total.abs() > 0) && !_isSubmitting;
+                final isEnabled =
+                    (isInCalcMode ? true : total.abs() > 0) && !_isSubmitting;
 
                 void handleTap() {
                   if (isInCalcMode) {
@@ -1132,7 +1156,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                     _submit(continueAdding: true);
                     return;
                   }
-                  _finishTapTimer = Timer(const Duration(milliseconds: 300), () {
+                  _finishTapTimer =
+                      Timer(const Duration(milliseconds: 300), () {
                     _finishTapTimer = null;
                     _submit(continueAdding: false);
                   });
@@ -1141,7 +1166,9 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                 return Padding(
                   padding: const EdgeInsets.all(6),
                   child: Material(
-                    color: isEnabled ? primary : BeeTokens.surfaceDisabled(context),
+                    color: isEnabled
+                        ? primary
+                        : BeeTokens.surfaceDisabled(context),
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
@@ -1155,7 +1182,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
                                 )
                               : isInCalcMode
@@ -1292,13 +1320,13 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     final allTags = allTagsAsync.valueOrNull ?? [];
 
     // 获取已选中的标签详情
-    final selectedTags = allTags
-        .where((t) => _selectedTagIds.contains(t.id))
-        .toList();
+    final selectedTags =
+        allTags.where((t) => _selectedTagIds.contains(t.id)).toList();
 
     // 获取附件数量
     if (widget.editingTransactionId != null) {
-      final attachmentsAsync = ref.watch(transactionAttachmentsProvider(widget.editingTransactionId!));
+      final attachmentsAsync = ref
+          .watch(transactionAttachmentsProvider(widget.editingTransactionId!));
       // 同样使用 valueOrNull 避免闪烁
       final attachments = attachmentsAsync.valueOrNull ?? [];
       final totalCount = attachments.length + _pendingAttachments.length;
@@ -1408,7 +1436,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
   }
 
-  Widget _buildRowContent(List<Tag> selectedTags, int attachmentCount, List<TransactionAttachment> savedAttachments) {
+  Widget _buildRowContent(List<Tag> selectedTags, int attachmentCount,
+      List<TransactionAttachment> savedAttachments) {
     final l10n = AppLocalizations.of(context);
     final hasAttachments = attachmentCount > 0;
 
@@ -1524,7 +1553,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     ];
   }
 
-  Future<void> _handleAttachmentTap(List<TransactionAttachment> savedAttachments) async {
+  Future<void> _handleAttachmentTap(
+      List<TransactionAttachment> savedAttachments) async {
     final totalCount = savedAttachments.length + _pendingAttachments.length;
 
     if (totalCount == 0) {
@@ -1593,7 +1623,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
               title: Text(l10n.attachmentChooseFromGallery),
               onTap: () async {
                 Navigator.pop(context);
-                final files = await service.pickFromGallery(maxCount: 9 - _pendingAttachments.length);
+                final files = await service.pickFromGallery(
+                    maxCount: 9 - _pendingAttachments.length);
                 if (files.isNotEmpty && mounted) {
                   if (widget.editingTransactionId != null) {
                     // 编辑模式：直接保存
