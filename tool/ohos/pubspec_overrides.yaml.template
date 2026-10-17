@@ -1,0 +1,68 @@
+# OHOS 构建专用依赖覆盖（复制为根目录 pubspec_overrides.yaml 使用，勿提交）
+# 复制命令: Copy-Item tool\ohos\pubspec_overrides.yaml.template pubspec_overrides.yaml
+#
+# 来源: CPF-Flutter 组织 (https://gitcode.com/CPF-Flutter)
+# 适配总表: https://gitcode.com/CPF-Flutter/docs/blob/main/ThirdpartyLibrarites.md
+# 分支名为 2026-10-17 查证结果, P0 阶段需逐项核实分支存在性与 API 兼容性。
+# 标注 [P0核实] 的条目需确认分支名; 确认后移除注释使用。
+#
+# 注意: dependency_overrides 会同时作用于所有平台。构建 Android/iOS 时
+# 删除根目录的 pubspec_overrides.yaml 即可回到官方依赖。
+
+dependency_overrides:
+  # ---- 已确认 3.27 适配, 版本完全一致或兼容 ----
+  # permission_handler: 官方 fluttertpc 适配, br_permission_handler_v11.3.1_ohos
+  # [P0核实]
+  # permission_handler:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/flutter_permission_handler.git
+  #     path: permission_handler
+  #     ref: br_permission_handler_v11.3.1_ohos
+
+  # package_info_plus 8.1.0 (项目 ^8.0.2)
+  # [P0核实] 仓库为 flutter_plus_plugins monorepo
+  # package_info_plus:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+  #     path: packages/package_info_plus
+  #     ref: br_package_info_plus-v8.1.0_ohos
+
+  # open_filex 4.5.0 (项目 ^4.4.0)
+  # open_filex:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/fluttertpc_open_filex.git
+  #     path: open_filex
+  #     ref: br_v4.5.0_ohos
+
+  # sqflite 2.4.1 (drift 兜底驱动, OHOS 侧基于 RDB)
+  # sqflite:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/flutter_sqflite.git
+  #     path: sqflite
+  #     ref: br_v2.4.1_ohos
+
+  # ---- 需降版本回归 (P0 专项验证) ----
+  # file_picker 8.0.6 (项目 ^8.1.2)
+  # file_picker:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/fluttertpc_file_picker.git
+  #     path: file_picker
+  #     ref: br_v8.0.6_ohos
+
+  # image_cropper 9.1.0 (项目 ^10.0.0; 项目已 override platform_interface 7.1.0, 与 9.x 匹配)
+  # image_cropper:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/fluttertpc_image_cropper.git
+  #     path: image_cropper
+  #     ref: br_v9.1.0_ohos
+
+  # share_plus 10.1.1 (项目 ^12.0.1; 待定项: 海报分享出口)
+  # share_plus:
+  #   git:
+  #     url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+  #     path: packages/share_plus
+  #     ref: br_share_plus-v10.1.1_ohos
+
+  # ---- 官方插件 (flutter_packages 仓库, P0 按 3.27 分支对表后填写) ----
+  # shared_preferences / path_provider / connectivity_plus / url_launcher /
+  # image_picker / webview_flutter / device_info_plus

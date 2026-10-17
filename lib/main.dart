@@ -16,6 +16,7 @@ import 'utils/app_localizations_resolver.dart';
 import 'providers/cloud_mode_providers.dart';
 import 'providers/ui_state_providers.dart';
 import 'utils/notification_factory.dart';
+import 'utils/ohos_feature_gate.dart';
 import 'pages/auth/splash_page.dart';
 import 'pages/auth/welcome_page.dart';
 import 'pages/auth/app_lock_screen.dart';
@@ -70,22 +71,28 @@ Future<void> main() async {
     print('⚠️  HomeWidget 插件初始化失败（可能在不支持的平台上运行）: $e');
   }
 
-  // 初始化通知服务
-  try {
-    final notificationUtil = NotificationFactory.getInstance();
-    await notificationUtil.initialize();
-  } catch (e) {
-    print('⚠️  通知服务初始化失败（可能在不支持的平台上运行）: $e');
+  // 初始化通知服务（OHOS 版暂不提供通知/提醒能力，见 OhosFeatureGate）
+  if (OhosFeatureGate.enableNotifications) {
+    try {
+      final notificationUtil = NotificationFactory.getInstance();
+      await notificationUtil.initialize();
+    } catch (e) {
+      print('⚠️  通知服务初始化失败（可能在不支持的平台上运行）: $e');
+    }
   }
 
   // 恢复用户的记账提醒设置（关键修复：应用重启后自动恢复提醒）
-  await _restoreUserReminder();
+  if (OhosFeatureGate.enableReminders) {
+    await _restoreUserReminder();
+  }
 
   // 启动提醒监控服务（监听应用生命周期，自动恢复丢失的提醒）
-  try {
-    ReminderMonitorService().startMonitoring();
-  } catch (e) {
-    print('⚠️  提醒监控服务启动失败（可能在不支持的平台上运行）: $e');
+  if (OhosFeatureGate.enableReminders) {
+    try {
+      ReminderMonitorService().startMonitoring();
+    } catch (e) {
+      print('⚠️  提醒监控服务启动失败（可能在不支持的平台上运行）: $e');
+    }
   }
 
   // 创建全局ProviderContainer（需要在周期交易生成之前创建，因为需要使用 repositoryProvider）
@@ -120,23 +127,29 @@ Future<void> main() async {
   // 所有活跃用户已完成，Drift onUpgrade 已覆盖相关 schema 变更
   // 硬编码 SQL 重建表会导致新增字段丢失（如 sort_order），故移除
 
-  // 注册小组件交互回调
-  try {
-    await WidgetManager.registerCallback();
-  } catch (e) {
-    logger.warning('App', '小组件回调注册失败（可能在不支持的平台上运行）: $e');
+  // 注册小组件交互回调（OHOS 版暂不提供桌面小组件）
+  if (OhosFeatureGate.enableHomeWidgets) {
+    try {
+      await WidgetManager.registerCallback();
+    } catch (e) {
+      logger.warning('App', '小组件回调注册失败（可能在不支持的平台上运行）: $e');
+    }
   }
 
-  // 恢复截图自动识别设置（Android专属），传入container
-  await _restoreScreenshotMonitor(container);
+  // 恢复截图自动识别设置（Android专属），传入container（OHOS 版不提供）
+  if (OhosFeatureGate.enableScreenshotMonitor) {
+    await _restoreScreenshotMonitor(container);
+  }
 
-  // 初始化图片分享处理服务（Android专属）
-  if (Platform.isAndroid) {
+  // 初始化图片分享处理服务（Android专属；OHOS 版不提供系统分享）
+  if (Platform.isAndroid && OhosFeatureGate.enableImageShareHandler) {
     _setupImageShareHandler(container);
   }
 
-  // 启动 URL 监听（用于快捷指令/AppLink 自动记账）
-  _setupUrlListener(container);
+  // 启动 URL 监听（用于快捷指令/AppLink 自动记账；OHOS 版不做 deep link）
+  if (OhosFeatureGate.enableAppLinks) {
+    _setupUrlListener(container);
+  }
 
   // 注册 BeeCount Cloud 2FA challenge handler。当 server 返回 requires_2fa=true,
   // service 层会调这个 handler 弹出 Login2FAChallengeDialog 让用户输码。
@@ -178,6 +191,8 @@ class _WidgetUpdateObserver extends ProviderObserver {
   }
 
   void _updateWidgetOnStart(ProviderContainer container) async {
+    // OHOS 版暂不提供桌面小组件，直接跳过渲染预热
+    if (!OhosFeatureGate.enableHomeWidgets) return;
     try {
       // 先等主币种从 prefs 恢复完成再取值:本回调由 currentLedgerIdProvider
       // 首次赋值触发,与 baseCurrencyInitProvider 的异步恢复是并行的两条链,

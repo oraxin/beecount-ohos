@@ -72,3 +72,6 @@ tmp
 
 # 本地设计原型（不提交）
 design-prototypes/
+
+# OHOS 构建专用依赖覆盖(由 tool/ohos 模板复制生成,勿提交)
+pubspec_overrides.yaml
