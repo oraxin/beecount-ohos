@@ -338,17 +338,39 @@ class TransactionListItem extends ConsumerWidget {
                             );
                           }),
                         ),
-                        // 标签：紧挨分类名（从金额下方移来，用户反馈）
+                        // 标签：紧挨分类名（用户反馈）。紧凑式——只显示第 1 个
+                        // chip + "+N"，外层 FittedBox scaleDown 保证永不换行
+                        // （TagChipList 的 Wrap 在窄宽度会把行撑很高，弃用）。
                         if (tags != null && tags!.isNotEmpty) ...[
                           const SizedBox(width: 6),
                           Flexible(
                             flex: 3,
-                            child: TagChipList(
-                              tags: tags!,
-                              maxDisplay: 2,
-                              size: TagChipSize.small,
-                              spacing: 4,
-                              onTagTap: onTagTap,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TagChip(
+                                    name: tags!.first.name,
+                                    color: tags!.first.color,
+                                    size: TagChipSize.small,
+                                    onTap: onTagTap != null
+                                        ? () => onTagTap!(
+                                            tags!.first.id, tags!.first.name)
+                                        : null,
+                                  ),
+                                  if (tags!.length > 1) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '+${tags!.length - 1}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: BeeTokens.textTertiary(context),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
