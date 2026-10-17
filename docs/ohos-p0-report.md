@@ -61,3 +61,38 @@
   "默认账本"由 SeedService 写入并从数据库读出 → **DB 读写链路真机验证通过** ✅
 - 已知限制：通知/小组件/截图记账/分享/Supabase 等按 OhosFeatureGate 裁剪（v0.0.1/v0.0.2）；
   图像压缩/裁剪等 OHOS 插件待 v0.2.0 补齐。
+
+## 6. v0.2.0 插件适配记录（feat/ohos-local-full）
+
+> 2026-10-17。CPF 插件分支名经 gitcode API（/api/v5/repos/...）逐一核实。
+
+### 6.1 依赖注入矩阵（pubspec_overrides.yaml）
+
+| 插件 | 官方版本 | OHOS 来源（ref） | 说明 |
+|---|---|---|---|
+| file_picker | ^8.1.2 → 8.0.7 | fluttertpc_file_picker `br_v8.0.7_ohos`（包在仓库根） | v8 系最新适配分支 |
+| share_plus | ^12.0.1（同版） | flutter_plus_plugins `br_share_plus-v12.0.1_ohos` | 与官方完全同版本，无需降级 |
+| image_cropper | ^10.0.0 → 9.1.0 | fluttertpc_image_cropper `br_v9.1.0_ohos` | interface 与 pin 7.1.0 匹配 |
+| connectivity_plus | ^6.1.0 → 7.0.0 | flutter_plus_plugins `br_connectivity_plus-v7.0.0_ohos` | 仅云同步网络提示用 |
+| package_info_plus | ^8.0.2 → 9.0.0 | flutter_plus_plugins `br_package_info_plus-v9.0.0_ohos` | 版本号展示 |
+| url_launcher_ohos / image_picker_ohos | — | flutter_packages `master` | 联合插件 OHOS 实现显式注入 |
+
+解析冲突处置（新增 3 个教训）：
+
+| 坑 | 现象 | 处置 |
+|---|---|---|
+| web 版本冲突 | file_picker 8.0.7 声明 `web ^0.5.1`、share_plus 12.0.1 声明 `web ^1.0.0`，pub 解析失败 | override 统一 `web: ^1.0.0`——两者在非 web 平台走条件 import stub，不触碰 package:web 1.0 破坏面 |
+| 传递 git 源 | share_plus_platform_interface 把 path_provider 声明为 git 源，与主工程 hosted 冲突 | override `path_provider: ^2.1.4` 钉回 hosted（OHOS 能力由 path_provider_ohos 提供） |
+| 单仓双层目录 | `packages/package_info_plus/pubspec.yaml not found` | flutter_plus_plugins 结构为 `packages/<plugin>/<plugin>`，path 必须写到内层 |
+
+### 6.2 webview 降级（help_center / privacy_policy）
+
+CPF 暂无 webview_flutter OHOS 适配。`HelpCenterPage` / `PrivacyPolicyPage` 在
+OHOS 上不初始化 WebViewController，页面主体降级为"在浏览器中打开"兜底页
+（复用 `helpCenterOpenInBrowser` 文案与 `_openInBrowser()` 逻辑），所有调用方
+（mine/help/about/login/AI 隐私弹窗）零改动。
+
+### 6.3 构建结果
+
+- `flutter build hap --debug` 一次通过（58s，降版本 API 无编译冲突）
+- 真机功能走查：待办（记账增删改查/图表/CSV 导入导出/头像选择与裁剪）
