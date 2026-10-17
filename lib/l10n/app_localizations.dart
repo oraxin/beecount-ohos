@@ -383,7 +383,7 @@ abstract class AppLocalizations {
   /// The application title
   ///
   /// In en, this message translates to:
-  /// **'Bee Accounting'**
+  /// **'BeeCount-ohos'**
   String get appTitle;
 
   /// No description provided for @tabHome.
@@ -875,7 +875,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeAppTitle.
   ///
   /// In en, this message translates to:
-  /// **'Bee Accounting'**
+  /// **'BeeCount-ohos'**
   String get homeAppTitle;
 
   /// No description provided for @homeSearch.
@@ -1385,7 +1385,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashAppName.
   ///
   /// In en, this message translates to:
-  /// **'Bee Accounting'**
+  /// **'BeeCount-ohos'**
   String get splashAppName;
 
   /// No description provided for @splashSlogan.
@@ -8375,7 +8375,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In en, this message translates to:
-  /// **'BeeCount'**
+  /// **'BeeCount-ohos'**
   String get appName;
 
   /// No description provided for @monthSuffix.

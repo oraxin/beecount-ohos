@@ -8,6 +8,9 @@ class BeeTheme {
   static const Color hiveBrown = Color(0xFF8D6E63); // 辅助色
   static const Color energyOrange = Color(0xFFEF6C00); // 点缀色
   static const Color paperIvory = Color(0xFFFFF8E1); // 背景
+  /// 亮色模式页面底色（与 BeeTokens.scaffoldBackground 亮色值保持一致，
+  /// 用于 ThemeData.scaffoldBackgroundColor —— 首页明细等走 Theme 的页面）
+  static const Color scaffoldBgLight = Color(0xFFF2F3F5);
   static const Color textDark = Color(0xFF333333); // 文字
 
   // Brand colors - Dark Mode ⭐ 改为与亮色模式相同（不减弱）
@@ -30,7 +33,7 @@ class BeeTheme {
         surface: Colors.white,
       ),
       primaryColor: honeyGold,
-      scaffoldBackgroundColor: paperIvory,
+      scaffoldBackgroundColor: scaffoldBgLight,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
         foregroundColor: textDark,

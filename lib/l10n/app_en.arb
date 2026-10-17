@@ -58,7 +58,7 @@
   "aiConsentAgree": "Agree & enable",
   "aboutPrivacyPolicy": "Privacy Policy",
   "aboutChangelog": "Changelog",
-  "appTitle": "Bee Accounting",
+  "appTitle": "BeeCount-ohos",
   "@appTitle": {
     "description": "The application title"
   },
@@ -185,7 +185,7 @@
   "homeBalance": "Balance",
   "homeNoRecords": "No records yet",
   "homeSelectDate": "Select date",
-  "homeAppTitle": "Bee Accounting",
+  "homeAppTitle": "BeeCount-ohos",
   "homeSearch": "Search",
   "homeYear": "{year}",
   "@homeYear": {
@@ -298,7 +298,7 @@
   "analyticsSwipeToSwitch": "Swipe to switch",
   "analyticsAllYears": "All Years",
   "analyticsToday": "Today",
-  "splashAppName": "Bee Accounting",
+  "splashAppName": "BeeCount-ohos",
   "splashSlogan": "Record Every Drop",
   "splashSecurityTitle": "Open Source Data Security",
   "splashSecurityFeature1": "• Local data storage, complete privacy control",
@@ -1864,7 +1864,7 @@
   "widgetDescription": "Widget automatically syncs to display today's and this month's income and expense data, refreshing every 30 minutes. Data updates immediately when app is opened.",
   "widgetQuickEntryTitle": "Quick Entry",
   "widgetQuickEntryDesc": "Tap the left side of the widget to quickly add an expense, or tap the right side to add an income. You can also use beecount://new?type=transfer via Shortcuts to quickly start a transfer.",
-  "appName": "BeeCount",
+  "appName": "BeeCount-ohos",
   "monthSuffix": "",
   "todayExpense": "Today's Expense",
   "todayIncome": "Today's Income",

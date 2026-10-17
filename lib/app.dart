@@ -875,33 +875,6 @@ class _BeeAppState extends ConsumerState<BeeApp>
               onCenterLongPressEnd: _onLongPressEnd,
             ),
           ),
-          // 开发模式下的主题切换按钮
-          if (kDebugMode)
-            Positioned(
-              right: 16,
-              bottom: 100,
-              child: FloatingActionButton.small(
-                heroTag: 'themeSwitcher',
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
-                onPressed: () {
-                  final current = ref.read(themeModeProvider);
-                  final next = current == ThemeMode.dark
-                      ? ThemeMode.light
-                      : ThemeMode.dark;
-                  ref.read(themeModeProvider.notifier).state = next;
-                },
-                child: Icon(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Icons.light_mode
-                      : Icons.dark_mode,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.black
-                      : Colors.white,
-                ),
-              ),
-            ),
         ],
       ),
     );

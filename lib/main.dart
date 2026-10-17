@@ -526,7 +526,7 @@ class MainApp extends ConsumerWidget {
       textTheme: baseTextTheme,
       colorScheme: base.colorScheme.copyWith(primary: primary),
       primaryColor: primary,
-      scaffoldBackgroundColor: Colors.white,
+      scaffoldBackgroundColor: BeeTheme.scaffoldBgLight, // ⭐ 与我的页底色一致，白卡片可区分
       dividerColor: Colors.black.withOpacity(0.06),
       listTileTheme: ListTileThemeData(
         dense: true,
