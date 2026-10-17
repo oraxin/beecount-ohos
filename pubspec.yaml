@@ -1,7 +1,7 @@
 name: beecount
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.2.0+1
+version: 0.2.1+1
 
 environment:
   sdk: ^3.6.0
@@ -17,6 +17,8 @@ dependencies:
   # OHOS 数据库驱动（drift 的 sqflite 执行器桥，纯 Dart）。OHOS 侧 sqflite
   # 由 pubspec_overrides.yaml 指向 openharmony-sig 适配版；Android/iOS 构建时
   # 删除 overrides 文件即回到 pub.dev sqflite，drift_sqflite 不参与执行路径。
+  # v0.2.1：OHOS 改用项目内 ohos_sqflite_executor.dart（原生事务），此依赖
+  # 保留只为 Android/iOS 工作区零差异，若后续确认无用可移除。
   drift_sqflite: ^2.0.1
   sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.4
