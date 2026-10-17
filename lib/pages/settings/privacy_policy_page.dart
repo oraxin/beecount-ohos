@@ -9,6 +9,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/theme_providers.dart';
 import '../../styles/tokens.dart';
+import '../../utils/platform_info.dart';
 import '../../utils/website_urls.dart';
 import '../../widgets/ui/ui.dart';
 
@@ -37,6 +38,9 @@ class _PrivacyPolicyPageState extends ConsumerState<PrivacyPolicyPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_controller != null) return;
+    // OHOS:CPF 暂无 webview_flutter 适配,降级为外部浏览器打开(见兜底页),
+    // 不初始化 WebView 控制器,避免运行期 MissingPluginException。
+    if (PlatformInfo.isOhos) return;
     final locale = Localizations.localeOf(context);
     _url = WebsiteUrls.privacy(
       locale,
@@ -87,6 +91,27 @@ class _PrivacyPolicyPageState extends ConsumerState<PrivacyPolicyPage> {
         mode: LaunchMode.externalApplication);
   }
 
+  // OHOS 降级页:无内嵌 WebView 能力,仅提供"在浏览器中打开"入口。
+  Widget _buildBrowserFallback(BuildContext context, Color primary) {
+    final l10n = AppLocalizations.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.open_in_browser,
+              size: 48, color: BeeTokens.textTertiary(context)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primary),
+            onPressed: _openInBrowser,
+            child: Text(l10n.helpCenterOpenInBrowser,
+                style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -95,7 +120,8 @@ class _PrivacyPolicyPageState extends ConsumerState<PrivacyPolicyPage> {
     return PopScope(
       // iOS:单页隐私政策无 SPA 历史,直接放行退出;
       // Android:先在网页历史内回退,到底再退出路由。
-      canPop: Platform.isIOS,
+      // OHOS 降级页无网页历史,直接放行返回。
+      canPop: PlatformInfo.isOhos || Platform.isIOS,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final controller = _controller;
@@ -116,7 +142,10 @@ class _PrivacyPolicyPageState extends ConsumerState<PrivacyPolicyPage> {
               compact: true,
             ),
             Expanded(
-              child: Stack(
+              // OHOS:降级页 —— 仅提供"在浏览器中打开"入口
+              child: PlatformInfo.isOhos
+                  ? _buildBrowserFallback(context, primary)
+                  : Stack(
                 children: [
                   if (_controller != null && !_failed)
                     WebViewWidget(controller: _controller!),

@@ -9,6 +9,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/theme_providers.dart';
 import '../../styles/tokens.dart';
+import '../../utils/platform_info.dart';
 import '../../utils/website_urls.dart';
 import '../../widgets/ui/ui.dart';
 
@@ -70,6 +71,9 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
     super.didChangeDependencies();
     // 初始化需要 context(locale / 暗黑 / 主题色),放 didChangeDependencies 首跑
     if (_controller != null) return;
+    // OHOS:CPF 暂无 webview_flutter 适配,降级为外部浏览器打开(见兜底页),
+    // 不初始化 WebView 控制器,避免运行期 MissingPluginException。
+    if (PlatformInfo.isOhos) return;
     final locale = Localizations.localeOf(context);
     _url = widget.initialUrl ??
         WebsiteUrls.docsEmbed(
@@ -139,6 +143,28 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
+  // OHOS 降级页:无内嵌 WebView 能力,仅提供"在浏览器中打开"入口。
+  // _openInBrowser 在 controller 为空时兜底打开文档首页(非 embed 链接)。
+  Widget _buildBrowserFallback(BuildContext context, Color primary) {
+    final l10n = AppLocalizations.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.open_in_browser,
+              size: 48, color: BeeTokens.textTertiary(context)),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: primary),
+            onPressed: _openInBrowser,
+            child: Text(l10n.helpCenterOpenInBrowser,
+                style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -153,7 +179,8 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
       //   canPop=true,左滑正常退出页面。注意 Flutter 路由手势优先级高于
       //   WKWebView 手势,所以 iOS 不能像 Android 一样常开拦截(左滑退不出页),
       //   也不能常不拦截(左滑直接退整页)
-      canPop: Platform.isIOS ? !_awayFromHome : false,
+      // OHOS 降级页无网页历史,直接放行返回
+      canPop: PlatformInfo.isOhos || (Platform.isIOS ? !_awayFromHome : false),
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final controller = _controller;
@@ -182,7 +209,10 @@ class _HelpCenterPageState extends ConsumerState<HelpCenterPage> {
               ],
             ),
             Expanded(
-              child: Stack(
+              // OHOS:降级页 —— 仅提供"在浏览器中打开"入口
+              child: PlatformInfo.isOhos
+                  ? _buildBrowserFallback(context, primary)
+                  : Stack(
                 children: [
                   if (_controller != null && !_failed)
                     WebViewWidget(controller: _controller!),
