@@ -828,10 +828,11 @@ packages:
   image_cropper_platform_interface:
     dependency: "direct overridden"
     description:
-      name: image_cropper_platform_interface
-      sha256: "6ca6b81769abff9a4dcc3bbd3d75f5dfa9de6b870ae9613c8cd237333a4283af"
-      url: "https://pub.flutter-io.cn"
-    source: hosted
+      path: image_cropper_platform_interface
+      ref: "br_v9.1.0_ohos"
+      resolved-ref: b1b45b1a5333571095569d53d01720c505fff983
+      url: "https://gitcode.com/CPF-Flutter/fluttertpc_image_cropper"
+    source: git
     version: "7.1.0"
   image_picker:
     dependency: "direct main"

@@ -13,7 +13,15 @@
 dependency_overrides:
   # ---- 镜像 pubspec.yaml 的官方 pin ----
   record_platform_interface: 1.2.0
-  image_cropper_platform_interface: 7.1.0
+  # image_cropper_platform_interface：官方 pin 7.1.0；OHOS 必须用 CPF 同版本号
+  # 适配版（多一个 _createDefaultInstance 的 ohos 分支 → MethodChannelImagecropperOhos，
+  # channel "imagecropper" 与 OHOS 原生 ImagecropperOhosPlugin 匹配）。官方 hosted
+  # 7.1.0 无该分支，OHOS 上会报 MissingPluginException(cropImage)。
+  image_cropper_platform_interface:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_image_cropper
+      path: image_cropper_platform_interface
+      ref: br_v9.1.0_ohos
 
   # sqflite 的 OHOS RDB 实现（drift 走 SqfliteQueryExecutor 时的底层驱动）
   sqflite:
