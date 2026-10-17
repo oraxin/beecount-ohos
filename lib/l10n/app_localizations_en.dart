@@ -172,7 +172,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutChangelog => 'Changelog';
 
   @override
-  String get appTitle => 'Bee Accounting';
+  String get appTitle => 'BeeCount-ohos';
 
   @override
   String get tabHome => 'Home';
@@ -430,7 +430,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSelectDate => 'Select date';
 
   @override
-  String get homeAppTitle => 'Bee Accounting';
+  String get homeAppTitle => 'BeeCount-ohos';
 
   @override
   String get homeSearch => 'Search';
@@ -715,7 +715,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyticsToday => 'Today';
 
   @override
-  String get splashAppName => 'Bee Accounting';
+  String get splashAppName => 'BeeCount-ohos';
 
   @override
   String get splashSlogan => 'Record Every Drop';
@@ -4396,7 +4396,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get widgetQuickEntryDesc => 'Tap the left side of the widget to quickly add an expense, or tap the right side to add an income. You can also use beecount://new?type=transfer via Shortcuts to quickly start a transfer.';
 
   @override
-  String get appName => 'BeeCount';
+  String get appName => 'BeeCount-ohos';
 
   @override
   String get monthSuffix => '';

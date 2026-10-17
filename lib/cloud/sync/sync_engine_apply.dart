@@ -821,19 +821,21 @@ extension SyncEngineApplyExt on SyncEngine {
       }
       // insert 必须给值:payload 缺 key 时取列默认 1(与 update 路径的
       // absent 语义不同 —— 新建行没有"原值"可保)。
-      await db.into(db.ledgers).insert(LedgersCompanion.insert(
-            name: name,
-            currency: d.Value(currency ?? 'CNY'),
-            syncId: d.Value(syncId),
-            monthStartDay: d.Value(monthStartDay ?? 1),
-          ));
+      //
+      // ⚠️ OHOS:这里不能 insert 后再 select(原 getSingle().id)——
+      // openharmony-sig RDB 适配层在事务内"写后读"不一致(刚 insert 的行
+      // 同事务 rawQuery 查不到 → Bad state: No element → 整页 apply 回滚、
+      // cursor 卡 0)。drift 的 insert 返回 rowid,直接用。
+      final insertedLedgerId =
+          await db.into(db.ledgers).insert(LedgersCompanion.insert(
+                name: name,
+                currency: d.Value(currency ?? 'CNY'),
+                syncId: d.Value(syncId),
+                monthStartDay: d.Value(monthStartDay ?? 1),
+              ));
       logger.info('SyncEngine',
           'pull: 新增账本 syncId=$syncId name=$name currency=${currency ?? "CNY"}');
-      activePullCache?.putLedger(
-          syncId,
-          (await (db.select(db.ledgers)..where((l) => l.syncId.equals(syncId)))
-                  .getSingle())
-              .id);
+      activePullCache?.putLedger(syncId, insertedLedgerId);
       return;
     }
     final ledger = ledgerList.first;
@@ -956,10 +958,13 @@ extension SyncEngineApplyExt on SyncEngine {
                 ),
               );
           activePullCache?.putTag(newSyncId, id);
-          tag = await (db.select(db.tags)..where((t) => t.id.equals(id)))
-              .getSingle();
+          // ⚠️ OHOS:不能用 insert 后再 select(id.getSingle())取行——
+          // RDB 适配层事务内"写后读"不一致（同 ledger 的坑）。insert 的
+          // rowid 已足够（下游只用 tag.id）。
+          linkedLocalIds.add(id);
+        } else {
+          linkedLocalIds.add(tag.id);
         }
-        linkedLocalIds.add(tag.id);
       }
     }
 
@@ -1044,20 +1049,27 @@ extension SyncEngineApplyExt on SyncEngine {
         // Web 移除前面的图片或复用同一文件重新上传时，身份可以保持不变，
         // 但顺序/原始名称/尺寸仍可能更新。缺失字段兼容旧端，不清空本地值。
         final originalName = attMap.containsKey('originalName')
-            ? attMap['originalName'] as String? : ex.originalName;
+            ? attMap['originalName'] as String?
+            : ex.originalName;
         final fileSize = attMap.containsKey('fileSize')
-            ? attMap['fileSize'] as int? : ex.fileSize;
-        final width = attMap.containsKey('width')
-            ? attMap['width'] as int? : ex.width;
-        final height = attMap.containsKey('height')
-            ? attMap['height'] as int? : ex.height;
+            ? attMap['fileSize'] as int?
+            : ex.fileSize;
+        final width =
+            attMap.containsKey('width') ? attMap['width'] as int? : ex.width;
+        final height =
+            attMap.containsKey('height') ? attMap['height'] as int? : ex.height;
         final sortOrder = attMap['sortOrder'] as int? ?? ex.sortOrder;
         final nextFileId = cloudFileId ?? ex.cloudFileId;
         final nextSha = cloudFileId != null && cloudFileId != ex.cloudFileId
-            ? cloudSha256 : cloudSha256 ?? ex.cloudSha256;
-        if (ex.cloudFileId != nextFileId || ex.cloudSha256 != nextSha ||
-            ex.originalName != originalName || ex.fileSize != fileSize ||
-            ex.width != width || ex.height != height || ex.sortOrder != sortOrder) {
+            ? cloudSha256
+            : cloudSha256 ?? ex.cloudSha256;
+        if (ex.cloudFileId != nextFileId ||
+            ex.cloudSha256 != nextSha ||
+            ex.originalName != originalName ||
+            ex.fileSize != fileSize ||
+            ex.width != width ||
+            ex.height != height ||
+            ex.sortOrder != sortOrder) {
           updates.add((
             id: ex.id,
             data: TransactionAttachmentsCompanion(

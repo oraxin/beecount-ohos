@@ -172,7 +172,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get aboutChangelog => 'Changelog';
 
   @override
-  String get appTitle => '꿀벌 가계부';
+  String get appTitle => 'BeeCount-ohos';
 
   @override
   String get tabHome => '홈';
@@ -430,7 +430,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get homeSelectDate => '날짜 선택';
 
   @override
-  String get homeAppTitle => '꿀벌 가계부';
+  String get homeAppTitle => 'BeeCount-ohos';
 
   @override
   String get homeSearch => '검색';
@@ -715,7 +715,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get analyticsToday => '오늘';
 
   @override
-  String get splashAppName => '꿀벌 가계부';
+  String get splashAppName => 'BeeCount-ohos';
 
   @override
   String get splashSlogan => '매 순간의 기록';
@@ -4396,7 +4396,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get widgetQuickEntryDesc => '위젯의 왼쪽을 누르면 지출을 빠르게 추가하고, 오른쪽을 누르면 수입을 추가합니다. 단축어에서 beecount://new?type=transfer 를 사용해 이체를 빠르게 시작할 수도 있습니다.';
 
   @override
-  String get appName => 'BeeCount';
+  String get appName => 'BeeCount-ohos';
 
   @override
   String get monthSuffix => '';

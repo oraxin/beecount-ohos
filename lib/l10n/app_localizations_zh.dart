@@ -172,7 +172,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutChangelog => '更新日志';
 
   @override
-  String get appTitle => '蜜蜂记账';
+  String get appTitle => '蜜蜂记账OH';
 
   @override
   String get tabHome => '明细';
@@ -430,7 +430,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeSelectDate => '选择日期';
 
   @override
-  String get homeAppTitle => '蜜蜂记账';
+  String get homeAppTitle => '蜜蜂记账OH';
 
   @override
   String get homeSearch => '搜索';
@@ -715,7 +715,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get analyticsToday => '今天';
 
   @override
-  String get splashAppName => '蜜蜂记账';
+  String get splashAppName => '蜜蜂记账OH';
 
   @override
   String get splashSlogan => '一笔一蜜';
@@ -4396,7 +4396,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get widgetQuickEntryDesc => '点击小组件左侧区域可快速新建支出，点击右侧区域可快速新建收入。也可通过快捷指令使用 beecount://new?type=transfer 快速发起转账。';
 
   @override
-  String get appName => '蜜蜂记账';
+  String get appName => '蜜蜂记账OH';
 
   @override
   String get monthSuffix => '月';
@@ -8843,7 +8843,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get aboutChangelog => '更新日誌';
 
   @override
-  String get appTitle => '蜜蜂記帳';
+  String get appTitle => '蜜蜂記帳OH';
 
   @override
   String get tabHome => '明細';
@@ -9101,7 +9101,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get homeSelectDate => '選擇日期';
 
   @override
-  String get homeAppTitle => '蜜蜂記帳';
+  String get homeAppTitle => '蜜蜂記帳OH';
 
   @override
   String get homeSearch => '搜尋';
@@ -9386,7 +9386,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get analyticsToday => '今天';
 
   @override
-  String get splashAppName => '蜜蜂記帳';
+  String get splashAppName => '蜜蜂記帳OH';
 
   @override
   String get splashSlogan => '一筆一蜜';
@@ -13067,7 +13067,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get widgetQuickEntryDesc => '點擊小組件左側區域可快速新建支出，點擊右側區域可快速新建收入。也可透過捷徑使用 beecount://new?type=transfer 快速發起轉帳。';
 
   @override
-  String get appName => '蜜蜂記帳';
+  String get appName => '蜜蜂記帳OH';
 
   @override
   String get monthSuffix => '月';

@@ -106,11 +106,18 @@ class _OhosTransactionDelegate extends SupportedTransactionDelegate {
 
   @override
   FutureOr<void> startTransaction(Future Function(QueryDelegate) run) async {
-    // ⚠️ 事务回调内必须用 txn 对象执行语句：用 Database 对象会把语句排队到
-    // 事务完成之后 → drift 在事务内等结果 → 死锁（真机复现：保存永久转圈）。
-    await _delegate.db.transaction<void>((txn) async {
-      await run(_TxnQueryDelegate(txn));
-    });
+    // ⚠️ OHOS RDB 适配层（openharmony-sig flutter_sqflite）的事务能力实测：
+    // 1. `BEGIN/COMMIT/SAVEPOINT` 文本 SQL 不被支持（syntax error）
+    // 2. sqflite db.transaction() 回调内用 Database 对象执行语句 → 排队到
+    //    事务之后 → drift 死锁（保存永久转圈）
+    // 3. 即使用回调的 txn 对象执行（_TxnQueryDelegate），事务内"写后读"
+    //    不一致：刚 insert 的行同事务 rawQuery 查不到（Bad state: No element），
+    //    同步 apply 整页回滚、cursor 卡 0
+    // → 事务降级为「顺序执行、无原子性」：直接在 Database 级执行 run。
+    // drift 内部锁保证语句顺序；同步 apply 按条幂等设计，单条失败不影响
+    // 其它条目（比整页回滚更利于同步推进）。主流程（记账保存等）实测
+    // 不依赖事务原子性。
+    await run(_delegate);
   }
 
   @override
@@ -122,43 +129,6 @@ class _OhosTransactionDelegate extends SupportedTransactionDelegate {
       // 嵌套事务直接在外层事务内执行（SQLite 的 SAVEPOINT 文本语句在
       // RDB 适配层同样不受支持），牺牲部分回滚粒度换取可用性。
       (outer, block) => block(outer);
-}
-
-/// 事务期间的语句执行器：全部走事务回调的 [s.Transaction] 对象，
-/// 保证语句真正落入当前事务（而非排队到事务之后 → 死锁）。
-class _TxnQueryDelegate implements QueryDelegate {
-  final s.Transaction txn;
-  _TxnQueryDelegate(this.txn);
-
-  @override
-  Future<QueryResult> runSelect(String statement, List<Object?> args) async {
-    final result = await txn.rawQuery(statement, args);
-    return QueryResult.fromRows(result);
-  }
-
-  @override
-  Future<int> runUpdate(String statement, List<Object?> args) {
-    return txn.rawUpdate(statement, args);
-  }
-
-  @override
-  Future<int> runInsert(String statement, List<Object?> args) {
-    return txn.rawInsert(statement, args);
-  }
-
-  @override
-  Future<void> runCustom(String statement, List<Object?> args) {
-    return txn.execute(statement, args);
-  }
-
-  @override
-  Future<void> runBatched(BatchedStatements statements) async {
-    final batch = txn.batch();
-    for (final arg in statements.arguments) {
-      batch.execute(statements.statements[arg.statementIndex], arg.arguments);
-    }
-    await batch.apply(noResult: true);
-  }
 }
 
 class _OhosSqfliteVersionDelegate extends DynamicVersionDelegate {
