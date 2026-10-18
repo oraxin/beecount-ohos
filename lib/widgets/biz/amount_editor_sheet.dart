@@ -901,10 +901,13 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                 child: _TxAuthorAvatars(
                     editingTransactionId: widget.editingTransactionId!),
               ),
-            // 快捷 chips 行（钱迹式）：日期 / 标签 / 图片 / 旗标
+            // 账户选择横滑行（最顶部，与标签互换后的位置）
+            _buildAccountRow(context),
+            const SizedBox(height: 8),
+            // 快捷 chips 行（钱迹式）：日期 / 图片 / 旗标
             _buildChipsRow(context),
             const SizedBox(height: 8),
-            // 金额卡片：账户选择 + 币种 + 备注 + 大金额 + 折算预览（钱迹式）
+            // 金额卡片：标签 + 备注 + 币种 + 大金额 + 折算预览（钱迹式）
             _buildAmountCard(context, text),
             const SizedBox(height: 8),
             // 数字键盘
@@ -1137,7 +1140,7 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
   }
 
-  /// 钱迹式快捷 chips 行：日期 / 标签 / 图片 / 旗标（横向滚动胶囊）。
+  /// 钱迹式快捷 chips 行：日期 / 图片 / 旗标（横向滚动胶囊）。
   Widget _buildChipsRow(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
@@ -1147,17 +1150,6 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     final showTime = ref.watch(showTransactionTimeProvider);
     final dateLabel =
         isToday ? l10n.calendarToday : '${_date.month}/${_date.day}';
-
-    // §7 共享账本:用按当前 ledger 过滤后的 tags(Editor 视角下走
-    // SharedLedgerTags,synthetic id 跟 tag picker 一致)。
-    final allTags = ref.watch(tagsForCurrentLedgerProvider).valueOrNull ?? [];
-    final selectedTags =
-        allTags.where((t) => _selectedTagIds.contains(t.id)).toList();
-    final tagLabel = selectedTags.isEmpty
-        ? l10n.tagSelectTitle
-        : selectedTags.length == 1
-            ? selectedTags.first.name
-            : '${selectedTags.first.name} +${selectedTags.length - 1}';
 
     // 附件数量：编辑模式叠加已保存附件
     int attachmentCount = _pendingAttachments.length;
@@ -1186,21 +1178,6 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
             icon: Icons.calendar_today_rounded,
             label: dateLabel,
             onTap: _pickDate,
-          ),
-          _chip(
-            context,
-            icon: Icons.sell_outlined,
-            label: tagLabel,
-            active: selectedTags.isNotEmpty,
-            onTap: () async {
-              final result = await TagSelector.show(
-                context,
-                selectedTagIds: _selectedTagIds,
-              );
-              if (result != null) {
-                setState(() => _selectedTagIds = result);
-              }
-            },
           ),
           _chip(
             context,
@@ -1269,7 +1246,88 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
   }
 
-  /// 钱迹式金额卡片：账户行 + 币种/备注/大金额行 + 折算预览。
+  /// 账户选择横滑行（最顶部；与标签互换后的位置）。
+  /// 仅 showAccountPicker 且账户功能启用时渲染。
+  Widget _buildAccountRow(BuildContext context) {
+    if (!widget.showAccountPicker) return const SizedBox.shrink();
+    return Consumer(
+      builder: (context, ref, _) {
+        final accountFeatureAsync = ref.watch(accountFeatureEnabledProvider);
+        return accountFeatureAsync.when(
+          data: (enabled) {
+            if (!enabled) return const SizedBox.shrink();
+            return AccountSelector(
+              selectedAccountId: _selectedAccountId,
+              ledgerId: widget.ledgerId,
+              // 币种优先联动:账户列表只显示当前所选币种的账户
+              filterCurrency: _txCurrency(),
+              // 账户隐藏(#240)E1 钉住:编辑态原账户若已隐藏,补回并打灰标
+              pinnedAccountId: widget.initialAccountId,
+              onAccountSelected: (accountId) {
+                setState(() {
+                  _selectedAccountId = accountId;
+                  _selectedAccountCurrency = null; // 异步刷新
+                });
+                if (accountId != null) {
+                  _loadAccountCurrency(accountId);
+                }
+              },
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        );
+      },
+    );
+  }
+
+  /// 标签选择行（金额卡内顶部；与账户互换后的位置）。
+  /// 已选标签以胶囊展示 + 末尾添加键；未选时显示「选择标签」胶囊。
+  Widget _buildTagRow(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // §7 共享账本:用按当前 ledger 过滤后的 tags(Editor 视角下走
+    // SharedLedgerTags,synthetic id 跟 tag picker 一致)。
+    final allTags = ref.watch(tagsForCurrentLedgerProvider).valueOrNull ?? [];
+    final selectedTags =
+        allTags.where((t) => _selectedTagIds.contains(t.id)).toList();
+
+    Future<void> openSelector() async {
+      final result = await TagSelector.show(
+        context,
+        selectedTagIds: _selectedTagIds,
+      );
+      if (result != null) {
+        setState(() => _selectedTagIds = result);
+      }
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: [
+          for (final tag in selectedTags)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: TagChip(
+                name: tag.name,
+                color: tag.color,
+                size: TagChipSize.small,
+              ),
+            ),
+          _chip(
+            context,
+            icon: Icons.sell_outlined,
+            label: selectedTags.isEmpty ? l10n.tagSelectTitle : null,
+            active: selectedTags.isNotEmpty,
+            onTap: openSelector,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 钱迹式金额卡片：标签行 + 备注/币种/大金额行 + 折算预览。
   Widget _buildAmountCard(BuildContext context, TextTheme text) {
     final kind = widget.transactionKind;
     final amountColor = kind == 'expense'
@@ -1289,47 +1347,13 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 账户选择（仅在启用时显示）
-          if (widget.showAccountPicker)
-            Consumer(
-              builder: (context, ref, _) {
-                final accountFeatureAsync =
-                    ref.watch(accountFeatureEnabledProvider);
-                return accountFeatureAsync.when(
-                  data: (enabled) {
-                    if (!enabled) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: AccountSelector(
-                        selectedAccountId: _selectedAccountId,
-                        ledgerId: widget.ledgerId,
-                        // 币种优先联动:账户列表只显示当前所选币种的账户
-                        filterCurrency: _txCurrency(),
-                        // 账户隐藏(#240)E1 钉住:编辑态原账户若已隐藏,补回并打灰标
-                        pinnedAccountId: widget.initialAccountId,
-                        onAccountSelected: (accountId) {
-                          setState(() {
-                            _selectedAccountId = accountId;
-                            _selectedAccountCurrency = null; // 异步刷新
-                          });
-                          if (accountId != null) {
-                            _loadAccountCurrency(accountId);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                );
-              },
-            ),
-          // 备注 + 币种 + 金额
+          // 标签选择行（与账户互换后的位置）
+          _buildTagRow(context),
+          const SizedBox(height: 6),
+          // 备注 + 币种 + 金额（货币紧靠金额之前）
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildCurrencyChip(context),
-              const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   focusNode: _noteFocusNode,
@@ -1385,6 +1409,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                 ),
               ),
               const SizedBox(width: 8),
+              _buildCurrencyChip(context),
+              const SizedBox(width: 6),
               // 金额列：运算模式先显示表达式小字，下方大字金额（按类别着色）
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,

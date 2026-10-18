@@ -115,37 +115,39 @@ class _SwipeActionRowState extends State<SwipeActionRow> {
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
-        // 底层操作按钮（右对齐，内容滑开后露出）
-        Positioned.fill(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              for (final action in widget.actions)
-                SizedBox(
-                  width: widget.actionWidth,
-                  child: Material(
-                    color: action.background,
-                    child: InkWell(
-                      onTap: () {
-                        _close();
-                        action.onTap();
-                      },
-                      child: Center(
-                        child: Text(
-                          action.label,
-                          style: TextStyle(
-                            color: action.foreground,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+        // 底层操作按钮（右对齐，内容滑开后露出）。
+        // 仅在拖动/展开时渲染：内容层透明，常驻渲染会直接透过内容显示。
+        if (_offset > 0)
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                for (final action in widget.actions)
+                  SizedBox(
+                    width: widget.actionWidth,
+                    child: Material(
+                      color: action.background,
+                      child: InkWell(
+                        onTap: () {
+                          _close();
+                          action.onTap();
+                        },
+                        child: Center(
+                          child: Text(
+                            action.label,
+                            style: TextStyle(
+                              color: action.foreground,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
         // 内容层：向左平移露出操作（拖动中即时跟手，松手后动画吸附）
         AnimatedContainer(
           duration:

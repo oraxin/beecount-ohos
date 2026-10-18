@@ -154,6 +154,35 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final ledgerId = ref.read(currentLedgerIdProvider);
+    // 键盘弹出时收起分类网格，只保留金额面板贴底（避免压缩变形/溢出）
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
+    final editor = AmountEditorSheet(
+      key: ValueKey('amount-$_kind'),
+      categoryName: _selectedCategory?.name ?? '',
+      categoryId: _selectedCategory?.id,
+      categorySyncId: (_selectedCategory != null && _selectedCategory!.id < 0)
+          ? _selectedCategory!.syncId
+          : null,
+      initialDate: widget.initialDate ?? DateTime.now(),
+      initialAmount: widget.initialAmount,
+      initialNote: widget.initialNote,
+      initialAccountId: widget.initialAccountId ?? _defaultAccountId,
+      initialTagIds: widget.initialTagIds,
+      showAccountPicker: true,
+      ledgerId: ledgerId,
+      editingTransactionId: widget.editingTransactionId,
+      transactionKind: _kind,
+      initialExcludeFromStats: widget.initialExcludeFromStats,
+      initialExcludeFromBudget: widget.initialExcludeFromBudget,
+      initialCurrencyCode: widget.initialCurrencyCode,
+      initialNativeAmount: widget.initialNativeAmount,
+      allowContinueAdding:
+          !widget.isCopy && widget.editingTransactionId == null,
+      embedded: true,
+      canSubmit: _selectedCategory != null,
+      onSubmit: _submitTransaction,
+    );
 
     return Scaffold(
       backgroundColor: BeeTokens.scaffoldBackground(context),
@@ -180,52 +209,30 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
                       initialCurrencyCode: widget.initialCurrencyCode,
                       initialNativeAmount: widget.initialNativeAmount,
                     )
-                  : Column(
-                      children: [
-                        // 分类网格常驻上半区（选中高亮由宿主持有）
-                        Expanded(
-                          child: CategorySelector(
-                            key: ValueKey('cats-$_kind'),
-                            kind: _kind,
-                            selectedId: _selectedCategory?.id,
-                            initialCategoryId: widget.initialCategoryId,
-                            onCategorySelected: (c) =>
-                                setState(() => _selectedCategory = c),
-                          ),
+                  : keyboardVisible
+                      // 键盘弹出：分类区收起，金额面板贴底
+                      ? Column(
+                          children: [
+                            const Spacer(),
+                            editor,
+                          ],
+                        )
+                      // 常态：分类网格常驻上半区（选中高亮由宿主持有）
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: CategorySelector(
+                                key: ValueKey('cats-$_kind'),
+                                kind: _kind,
+                                selectedId: _selectedCategory?.id,
+                                initialCategoryId: widget.initialCategoryId,
+                                onCategorySelected: (c) =>
+                                    setState(() => _selectedCategory = c),
+                              ),
+                            ),
+                            editor,
+                          ],
                         ),
-                        // 底部内嵌金额面板（钱迹式）
-                        AmountEditorSheet(
-                          key: ValueKey('amount-$_kind'),
-                          categoryName: _selectedCategory?.name ?? '',
-                          categoryId: _selectedCategory?.id,
-                          categorySyncId: (_selectedCategory != null &&
-                                  _selectedCategory!.id < 0)
-                              ? _selectedCategory!.syncId
-                              : null,
-                          initialDate: widget.initialDate ?? DateTime.now(),
-                          initialAmount: widget.initialAmount,
-                          initialNote: widget.initialNote,
-                          initialAccountId:
-                              widget.initialAccountId ?? _defaultAccountId,
-                          initialTagIds: widget.initialTagIds,
-                          showAccountPicker: true,
-                          ledgerId: ledgerId,
-                          editingTransactionId: widget.editingTransactionId,
-                          transactionKind: _kind,
-                          initialExcludeFromStats:
-                              widget.initialExcludeFromStats,
-                          initialExcludeFromBudget:
-                              widget.initialExcludeFromBudget,
-                          initialCurrencyCode: widget.initialCurrencyCode,
-                          initialNativeAmount: widget.initialNativeAmount,
-                          allowContinueAdding: !widget.isCopy &&
-                              widget.editingTransactionId == null,
-                          embedded: true,
-                          canSubmit: _selectedCategory != null,
-                          onSubmit: _submitTransaction,
-                        ),
-                      ],
-                    ),
             ),
           ],
         ),

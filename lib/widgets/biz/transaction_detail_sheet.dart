@@ -51,10 +51,6 @@ Future<void> showTransactionDetailSheet(
         await TransactionEditUtils.editTransaction(
             context, ref, transaction, category);
       },
-      onCopy: () async {
-        Navigator.of(context).pop();
-        await TransactionEditUtils.copyTransaction(context, ref, transaction);
-      },
       onDelete: () async {
         Navigator.of(context).pop();
         await TransactionEditUtils.deleteTransaction(context, ref, transaction);
@@ -72,7 +68,6 @@ class _DetailBody extends ConsumerWidget {
   final int attachmentCount;
   final VoidCallback? onAttachmentTap;
   final Future<void> Function() onEdit;
-  final Future<void> Function() onCopy;
   final Future<void> Function() onDelete;
 
   const _DetailBody({
@@ -84,7 +79,6 @@ class _DetailBody extends ConsumerWidget {
     this.attachmentCount = 0,
     this.onAttachmentTap,
     required this.onEdit,
-    required this.onCopy,
     required this.onDelete,
   });
 
@@ -212,14 +206,6 @@ class _DetailBody extends ConsumerWidget {
                   ),
                 ),
                 const Spacer(),
-                _actionPill(
-                  context,
-                  label: l10n.commonDuplicate,
-                  fg: BeeTokens.textPrimary(context),
-                  bg: BeeTokens.surfaceKey(context),
-                  onTap: () => onCopy(),
-                ),
-                const SizedBox(width: 8),
                 _actionPill(
                   context,
                   label: l10n.commonEdit,
