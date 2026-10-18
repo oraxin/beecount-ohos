@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -225,6 +224,13 @@ class AmountEditorSheet extends ConsumerStatefulWidget {
   final String? initialCurrencyCode;
   final double? initialNativeAmount;
 
+  /// 嵌入页面模式（钱迹式单页记账）：true 时由宿主 Scaffold 的
+  /// resizeToAvoidBottomInset 处理键盘，去掉底部弹窗专用的额外让位 padding。
+  final bool embedded;
+
+  /// 保存前置校验（如单页模式下必须先选分类）。false 时「保存/再记」置灰。
+  final bool canSubmit;
+
   const AmountEditorSheet({
     super.key,
     required this.categoryName,
@@ -245,6 +251,8 @@ class AmountEditorSheet extends ConsumerStatefulWidget {
     this.initialExcludeFromBudget = false,
     this.initialCurrencyCode,
     this.initialNativeAmount,
+    this.embedded = false,
+    this.canSubmit = true,
   });
 
   @override
@@ -273,7 +281,6 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
 
   // 防重复提交标志
   bool _isSubmitting = false;
-  Timer? _finishTapTimer;
 
   // 已选标签ID列表
   late List<int> _selectedTagIds;
@@ -336,9 +343,26 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
 
   @override
   void dispose() {
-    _finishTapTimer?.cancel();
     _noteFocusNode.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AmountEditorSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 嵌入页面模式：宿主切换/确认分类后，按新分类重载历史备注
+    if (widget.categoryId != oldWidget.categoryId ||
+        widget.categorySyncId != oldWidget.categorySyncId) {
+      _loadRecentNotes();
+    }
+    // 嵌入页面模式：新建交易的默认账户由宿主异步解析，解析完成后注入
+    // （initState 已跑过，这里补采纳；用户已手动选过账户则不打扰）
+    if (widget.initialAccountId != oldWidget.initialAccountId &&
+        _selectedAccountId == null &&
+        widget.initialAccountId != null) {
+      _selectedAccountId = widget.initialAccountId;
+      _loadAccountCurrency(widget.initialAccountId!);
+    }
   }
 
   Future<void> _loadRecentNotes() async {
@@ -635,6 +659,18 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
         currencyCode: txCurrency,
         nativeAmount: nativeAmount,
       ));
+      // 嵌入页面模式「再记」：保存成功后清空金额与备注、待传附件（已随本笔
+      // 入库），保留分类/账户/标签/旗标/日期，直接录下一笔（钱迹式）。
+      if (mounted && continueAdding) {
+        setState(() {
+          _amountStr = '0';
+          _acc = 0;
+          _op = null;
+          _noteCtrl.clear();
+          _pendingAttachments = [];
+          _isSubmitting = false;
+        });
+      }
     } catch (e, stack) {
       // 保存失败必须复位提交状态并给出反馈，否则「完成」按钮永久转圈
       // （数据可能已部分写入，由调用方负责一致性）。
@@ -728,9 +764,12 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     final text = Theme.of(context).textTheme;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-    // 如果备注框有焦点且键盘弹出，固定增加100的padding
+    // 底部弹窗模式：备注框聚焦且键盘弹出时额外让位；嵌入页面模式由宿主
+    // Scaffold 的 resizeToAvoidBottomInset 统一处理，不再额外加 padding。
     final extraPadding =
-        (_noteFieldHasFocus && keyboardHeight > 0) ? 100.0 : 0.0;
+        (!widget.embedded && _noteFieldHasFocus && keyboardHeight > 0)
+            ? 100.0
+            : 0.0;
 
     double parsed() => double.tryParse(_amountStr) ?? 0.0;
 
@@ -770,7 +809,7 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
 
     Widget keyBtn(String label, {Color? bg, Color? fg, VoidCallback? onTap}) {
       return Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(5),
         child: Material(
           color: bg ?? BeeTokens.surfaceKey(context),
           borderRadius: BorderRadius.circular(12),
@@ -778,14 +817,14 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
             borderRadius: BorderRadius.circular(12),
             onTap: onTap,
             child: Container(
-              height: 60,
+              height: 54,
               alignment: Alignment.center,
               child: Text(
                 label,
                 style: text.titleMedium?.copyWith(
                   color: fg ?? BeeTokens.textPrimary(context),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -794,23 +833,14 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
       );
     }
 
-    // 运算符键:同时显示「加减」与「乘除」两组运算符;当前激活的一组用主色高亮、
-    // 另一组用次级色弱化(主次区分,也作为"长按可切到乘除"的提示)。单击应用激活
-    // 运算符,长按切换加减 ↔ 乘除。
+    // 运算符键:显示当前激活的运算符（单击应用）；长按/双击切换加减 ↔ 乘除
+    // （两键独立切换，切换后立即应用另一组运算符——保留原能力，视觉对齐钱迹
+    // 的单符号键盘）。
     Widget opKey(
         String addSubOp, String mulDivOp, bool isMul, VoidCallback onToggle) {
       final activeOp = isMul ? mulDivOp : addSubOp;
-      // 激活的运算符与数字键完全一致(字号 18 / w600),保证视觉粗细相同 —— 字号
-      // 更大即使同 weight 笔画也会更粗。未激活更小(14)+ 灰色以分主次。
-      TextStyle opStyle(bool active) => text.titleMedium!.copyWith(
-            color: active
-                ? BeeTokens.textPrimary(context)
-                : BeeTokens.textTertiary(context),
-            fontSize: active ? 18 : 14,
-            fontWeight: FontWeight.w600,
-          );
       return Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.all(5),
         child: Material(
           color: BeeTokens.surfaceKeySecondary(context),
           borderRadius: BorderRadius.circular(12),
@@ -828,22 +858,15 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
               applyOp(isMul ? addSubOp : mulDivOp);
             },
             child: SizedBox(
-              height: 60,
-              // 「加减/乘除」中间一个斜杠分隔;单击用激活运算符,长按只切换本键(两键独立)。
+              height: 54,
               child: Center(
-                child: Text.rich(
-                  TextSpan(children: [
-                    TextSpan(text: _opGlyph(addSubOp), style: opStyle(!isMul)),
-                    TextSpan(
-                      text: '/',
-                      style: text.titleMedium!.copyWith(
-                        color: BeeTokens.textTertiary(context),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    TextSpan(text: _opGlyph(mulDivOp), style: opStyle(isMul)),
-                  ]),
+                child: Text(
+                  _opGlyph(activeOp),
+                  style: text.titleMedium?.copyWith(
+                    color: BeeTokens.textPrimary(context),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -862,210 +885,33 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 100),
         padding: EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          16 + extraPadding,
+          widget.embedded ? 12 : 16,
+          widget.embedded ? 8 : 12,
+          widget.embedded ? 12 : 16,
+          (widget.embedded ? 8 : 16) + extraPadding,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 金额显示区域（表达式模式）
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // 表达式行:左侧 = 共享账本作者头像(仅编辑模式 + 共享账本时
-                // 显示);右侧 = 金额表达式。新建 tx / 单人账本时左侧为空。
-                Row(
-                  children: [
-                    if (widget.editingTransactionId != null)
-                      _TxAuthorAvatars(
-                          editingTransactionId: widget.editingTransactionId!),
-                    const Spacer(),
-                    // v30 币种标:整个金额表达式的最左侧(反馈11:运算模式下
-                    // 不能夹在「10 + 20」中间),点开选币种。
-                    _buildCurrencyChip(context),
-                    const SizedBox(width: 6),
-                    if (_op != null) ...[
-                      // 显示累加值
-                      Text(
-                        (() {
-                          final s = _acc.abs().toStringAsFixed(2);
-                          final r1 = s.contains('.')
-                              ? s.replaceFirst(RegExp(r'0+$'), '')
-                              : s;
-                          return r1.endsWith('.')
-                              ? r1.substring(0, r1.length - 1)
-                              : r1;
-                        })(),
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: BeeTokens.textSecondary(context),
-                        ),
-                      ),
-                      // 显示运算符
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          _opGlyph(_op!),
-                          style: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                    // 当前输入值
-                    Text(
-                      _amountStr,
-                      style: text.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.0,
-                        color: BeeTokens.textPrimary(context),
-                      ),
-                    ),
-                  ],
-                ),
-                // 等号行：仅在有运算符时显示
-                if (_op != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        '= ',
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: BeeTokens.textTertiary(context),
-                        ),
-                      ),
-                      Text(
-                        (() {
-                          final cur = parsed();
-                          final total = _compute(_acc, _op!, cur);
-                          final s = total.abs().toStringAsFixed(2);
-                          final r1 = s.contains('.')
-                              ? s.replaceFirst(RegExp(r'0+$'), '')
-                              : s;
-                          return r1.endsWith('.')
-                              ? r1.substring(0, r1.length - 1)
-                              : r1;
-                        })(),
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                // v30 折算预览:金额模块区域内、金额/等号下方(反馈11)。
-                _buildCurrencySection(context),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // 备注输入区域 - 带历史备注图标前缀
-            TextField(
-              focusNode: _noteFocusNode,
-              controller: _noteCtrl,
-              style: TextStyle(color: BeeTokens.textPrimary(context)),
-              decoration: InputDecoration(
-                hintText: AppLocalizations.of(context).commonNoteHint,
-                hintStyle: TextStyle(color: BeeTokens.textTertiary(context)),
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: BeeTokens.surfaceInput(context),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                // 历史备注图标作为前缀
-                prefixIcon: _frequentNotes.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () async {
-                          await showDialog(
-                            context: context,
-                            builder: (context) => NotePickerDialog(
-                              ledgerId: widget.ledgerId,
-                              categoryId: widget.categoryId,
-                              categorySyncId: widget.categorySyncId,
-                              onNotePicked: (note) {
-                                setState(() {
-                                  _noteCtrl.text = note;
-                                  _noteCtrl.selection =
-                                      TextSelection.fromPosition(
-                                    TextPosition(offset: note.length),
-                                  );
-                                });
-                              },
-                            ),
-                          );
-                        },
-                        child: Icon(
-                          Icons.history,
-                          color: BeeTokens.iconSecondary(context),
-                          size: 20,
-                        ),
-                      )
-                    : null,
-                prefixIconConstraints: _frequentNotes.isNotEmpty
-                    ? const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 20,
-                      )
-                    : null,
+            // 共享账本作者头像（仅编辑模式 + 共享账本时显示）
+            if (widget.editingTransactionId != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 4),
+                child: _TxAuthorAvatars(
+                    editingTransactionId: widget.editingTransactionId!),
               ),
-            ),
-            // 账户选择（仅在启用时显示）
-            if (widget.showAccountPicker) ...[
-              const SizedBox(height: 8),
-              Consumer(
-                builder: (context, ref, child) {
-                  // 检查账户功能是否启用
-                  final accountFeatureAsync =
-                      ref.watch(accountFeatureEnabledProvider);
-                  return accountFeatureAsync.when(
-                    data: (enabled) {
-                      if (!enabled) return const SizedBox.shrink();
-
-                      // 使用新的横滑账户选择器
-                      return AccountSelector(
-                        selectedAccountId: _selectedAccountId,
-                        ledgerId: widget.ledgerId,
-                        // 币种优先联动:账户列表只显示当前所选币种的账户
-                        filterCurrency: _txCurrency(),
-                        // 账户隐藏(#240)E1 钉住:该笔交易本来挂的账户(编辑
-                        // 态)若已被隐藏,选择器补回并打灰标,可原样保存。
-                        pinnedAccountId: widget.initialAccountId,
-                        onAccountSelected: (accountId) {
-                          setState(() {
-                            _selectedAccountId = accountId;
-                            _selectedAccountCurrency = null; // 异步刷新
-                          });
-                          if (accountId != null) {
-                            _loadAccountCurrency(accountId);
-                          }
-                        },
-                      );
-                    },
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  );
-                },
-              ),
-            ],
-            // 标签和附件选择区域（一行）
+            // 快捷 chips 行（钱迹式）：日期 / 标签 / 图片 / 旗标
+            _buildChipsRow(context),
             const SizedBox(height: 8),
-            _buildTagAndAttachmentRow(),
-            const SizedBox(height: 10),
+            // 金额卡片：账户选择 + 币种 + 备注 + 大金额 + 折算预览（钱迹式）
+            _buildAmountCard(context, text),
+            const SizedBox(height: 8),
             // 数字键盘
             LayoutBuilder(builder: (ctx, c) {
               final w = (c.maxWidth) / 4;
               Widget dateKey() => Padding(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(5),
                     child: Material(
                       color: BeeTokens.surfaceKeySecondary(context),
                       borderRadius: BorderRadius.circular(12),
@@ -1076,7 +922,7 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                           _pickDate();
                         },
                         child: SizedBox(
-                          height: 60,
+                          height: 54,
                           child: Center(
                             child: showTime
                                 ? Column(
@@ -1110,8 +956,9 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                       ),
                     ),
                   );
-              Widget closeKey() => Padding(
-                    padding: const EdgeInsets.all(6),
+              // 退格键（钱迹式：数字键盘右上角）
+              Widget backspaceKey() => Padding(
+                    padding: const EdgeInsets.all(5),
                     child: Material(
                       color: BeeTokens.surfaceKey(context),
                       borderRadius: BorderRadius.circular(12),
@@ -1119,125 +966,42 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                         borderRadius: BorderRadius.circular(12),
                         onTap: _backspace,
                         child: SizedBox(
-                          height: 60,
+                          height: 54,
                           child: Center(
                               child: Icon(Icons.backspace_outlined,
+                                  size: 22,
                                   color: BeeTokens.textPrimary(context))),
                         ),
                       ),
                     ),
                   );
-              Widget doneKey() {
-                // 计算当前总额以判断是否启用完成按钮
-                final cur = parsed();
-                final total = _op == null ? cur : _compute(_acc, _op!, cur);
-
-                // 判断是否处于运算模式
-                final isInCalcMode = _op != null;
-                final isEnabled =
-                    (isInCalcMode ? true : total.abs() > 0) && !_isSubmitting;
-
-                void handleTap() {
-                  if (isInCalcMode) {
-                    // 运算模式：点击等号计算结果，不触发连续记账。
-                    applyEquals();
-                    return;
-                  }
-
-                  if (!widget.allowContinueAdding) {
-                    _submit(continueAdding: false);
-                    return;
-                  }
-
-                  // 等待双击窗口：单击仍按原行为保存退出，双击保存后留在分类页。
-                  if (_finishTapTimer != null) {
-                    _finishTapTimer!.cancel();
-                    _finishTapTimer = null;
-                    _submit(continueAdding: true);
-                    return;
-                  }
-                  _finishTapTimer =
-                      Timer(const Duration(milliseconds: 300), () {
-                    _finishTapTimer = null;
-                    _submit(continueAdding: false);
-                  });
-                }
-
+              // 「再记」键：保存当前一笔后留在本页继续录下一笔（仅新建可用；
+              // 编辑/复制/转账场景该位置回退为日期键）
+              Widget againKey() {
+                final isEnabled = !_isSubmitting && widget.canSubmit;
                 return Padding(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(5),
                   child: Material(
-                    color: isEnabled
-                        ? primary
-                        : BeeTokens.surfaceDisabled(context),
+                    color: BeeTokens.surfaceKey(context),
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap: isEnabled ? handleTap : null,
+                      onTap: isEnabled
+                          ? () => _submit(continueAdding: true)
+                          : null,
                       child: SizedBox(
-                        height: 60,
+                        height: 54,
                         child: Center(
-                          child: _isSubmitting
-                              ? SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
-                                  ),
-                                )
-                              : isInCalcMode
-                                  ? Text(
-                                      '=',
-                                      style: TextStyle(
-                                          color: isEnabled
-                                              ? Colors.white
-                                              : BeeTokens.textTertiary(context),
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w700),
-                                    )
-                                  : widget.allowContinueAdding
-                                      ? Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              AppLocalizations.of(context)
-                                                  .commonFinish,
-                                              style: TextStyle(
-                                                  color: isEnabled
-                                                      ? Colors.white
-                                                      : BeeTokens.textTertiary(
-                                                          context),
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w700,
-                                                  height: 1.1),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              AppLocalizations.of(context)
-                                                  .transactionDoubleTapHint,
-                                              style: TextStyle(
-                                                  color: isEnabled
-                                                      ? Colors.white70
-                                                      : BeeTokens.textTertiary(
-                                                          context),
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w500,
-                                                  height: 1),
-                                            ),
-                                          ],
-                                        )
-                                      : Text(
-                                          AppLocalizations.of(context)
-                                              .commonFinish,
-                                          style: TextStyle(
-                                              color: isEnabled
-                                                  ? Colors.white
-                                                  : BeeTokens.textTertiary(
-                                                      context),
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700),
-                                        ),
+                          child: Text(
+                            AppLocalizations.of(context).txSaveAndAgain,
+                            style: TextStyle(
+                              color: isEnabled
+                                  ? BeeTokens.textPrimary(context)
+                                  : BeeTokens.textTertiary(context),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1245,21 +1009,81 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                 );
               }
 
+              // 「保存」键：运算模式先算等号，否则直接提交（钱迹式主色文字）
+              Widget saveKey() {
+                // 计算当前总额以判断是否启用保存按钮
+                final cur = parsed();
+                final total = _op == null ? cur : _compute(_acc, _op!, cur);
+
+                // 判断是否处于运算模式
+                final isInCalcMode = _op != null;
+                final isEnabled = (isInCalcMode ? true : total.abs() > 0) &&
+                    !_isSubmitting &&
+                    widget.canSubmit;
+
+                void handleTap() {
+                  if (isInCalcMode) {
+                    // 运算模式：先计算结果（再点一次保存提交）。
+                    applyEquals();
+                    return;
+                  }
+                  _submit(continueAdding: false);
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Material(
+                    color: BeeTokens.surfaceKey(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: isEnabled ? handleTap : null,
+                      child: SizedBox(
+                        height: 54,
+                        child: Center(
+                          child: _isSubmitting
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(primary),
+                                  ),
+                                )
+                              : Text(
+                                  AppLocalizations.of(context).commonSave,
+                                  style: TextStyle(
+                                    color: isEnabled
+                                        ? primary
+                                        : BeeTokens.textTertiary(context),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              // 钱迹式键盘：1-9 电话排布，右上退格，右列运算符，
+              // 底行「再记(或日期) / 0 / . / 保存」。
               return Column(
                 children: [
                   Row(children: [
                     SizedBox(
                         width: w,
-                        child: keyBtn('7', onTap: () => _append('7'))),
+                        child: keyBtn('1', onTap: () => _append('1'))),
                     SizedBox(
                         width: w,
-                        child: keyBtn('8', onTap: () => _append('8'))),
+                        child: keyBtn('2', onTap: () => _append('2'))),
                     SizedBox(
                         width: w,
-                        child: keyBtn('9', onTap: () => _append('9'))),
-                    SizedBox(width: w, child: dateKey()),
+                        child: keyBtn('3', onTap: () => _append('3'))),
+                    SizedBox(width: w, child: backspaceKey()),
                   ]),
-                  const SizedBox(height: 2),
                   Row(children: [
                     SizedBox(
                         width: w,
@@ -1272,35 +1096,37 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                         child: keyBtn('6', onTap: () => _append('6'))),
                     SizedBox(
                         width: w,
-                        child: opKey('+', '×', _mulKey1,
-                            () => setState(() => _mulKey1 = !_mulKey1))),
-                  ]),
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    SizedBox(
-                        width: w,
-                        child: keyBtn('1', onTap: () => _append('1'))),
-                    SizedBox(
-                        width: w,
-                        child: keyBtn('2', onTap: () => _append('2'))),
-                    SizedBox(
-                        width: w,
-                        child: keyBtn('3', onTap: () => _append('3'))),
-                    SizedBox(
-                        width: w,
                         child: opKey('-', '÷', _mulKey2,
                             () => setState(() => _mulKey2 = !_mulKey2))),
                   ]),
-                  const SizedBox(height: 2),
                   Row(children: [
                     SizedBox(
                         width: w,
-                        child: keyBtn('.', onTap: () => _append('.'))),
+                        child: keyBtn('7', onTap: () => _append('7'))),
+                    SizedBox(
+                        width: w,
+                        child: keyBtn('8', onTap: () => _append('8'))),
+                    SizedBox(
+                        width: w,
+                        child: keyBtn('9', onTap: () => _append('9'))),
+                    SizedBox(
+                        width: w,
+                        child: opKey('+', '×', _mulKey1,
+                            () => setState(() => _mulKey1 = !_mulKey1))),
+                  ]),
+                  Row(children: [
+                    SizedBox(
+                        width: w,
+                        child: widget.allowContinueAdding
+                            ? againKey()
+                            : dateKey()),
                     SizedBox(
                         width: w,
                         child: keyBtn('0', onTap: () => _append('0'))),
-                    SizedBox(width: w, child: closeKey()),
-                    SizedBox(width: w, child: doneKey()),
+                    SizedBox(
+                        width: w,
+                        child: keyBtn('.', onTap: () => _append('.'))),
+                    SizedBox(width: w, child: saveKey()),
                   ]),
                 ],
               );
@@ -1311,28 +1137,294 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
   }
 
-  /// 构建标签和附件选择行（一行显示）
-  Widget _buildTagAndAttachmentRow() {
-    // §7 共享账本:用按当前 ledger 过滤后的 tags(Editor 视角下走 SharedLedgerTags,
-    // synthetic id 跟 tag picker 一致),否则编辑模式 tx 已选的 synthetic id 在
-    // 主表里找不到,显示"无标签"。
-    final allTagsAsync = ref.watch(tagsForCurrentLedgerProvider);
-    final allTags = allTagsAsync.valueOrNull ?? [];
+  /// 钱迹式快捷 chips 行：日期 / 标签 / 图片 / 旗标（横向滚动胶囊）。
+  Widget _buildChipsRow(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final isToday = _date.year == now.year &&
+        _date.month == now.month &&
+        _date.day == now.day;
+    final showTime = ref.watch(showTransactionTimeProvider);
+    final dateLabel =
+        isToday ? l10n.calendarToday : '${_date.month}/${_date.day}';
 
-    // 获取已选中的标签详情
+    // §7 共享账本:用按当前 ledger 过滤后的 tags(Editor 视角下走
+    // SharedLedgerTags,synthetic id 跟 tag picker 一致)。
+    final allTags = ref.watch(tagsForCurrentLedgerProvider).valueOrNull ?? [];
     final selectedTags =
         allTags.where((t) => _selectedTagIds.contains(t.id)).toList();
+    final tagLabel = selectedTags.isEmpty
+        ? l10n.tagSelectTitle
+        : selectedTags.length == 1
+            ? selectedTags.first.name
+            : '${selectedTags.first.name} +${selectedTags.length - 1}';
 
-    // 获取附件数量
+    // 附件数量：编辑模式叠加已保存附件
+    int attachmentCount = _pendingAttachments.length;
+    List<TransactionAttachment> savedAttachments = [];
     if (widget.editingTransactionId != null) {
-      final attachmentsAsync = ref
-          .watch(transactionAttachmentsProvider(widget.editingTransactionId!));
-      // 同样使用 valueOrNull 避免闪烁
-      final attachments = attachmentsAsync.valueOrNull ?? [];
-      final totalCount = attachments.length + _pendingAttachments.length;
-      return _buildRowContent(selectedTags, totalCount, attachments);
+      savedAttachments = ref
+              .watch(
+                  transactionAttachmentsProvider(widget.editingTransactionId!))
+              .valueOrNull ??
+          [];
+      attachmentCount += savedAttachments.length;
     }
-    return _buildRowContent(selectedTags, _pendingAttachments.length, []);
+
+    // 旗标：转账两个标记都不适用 → 不渲染
+    final kind = widget.transactionKind;
+    final showFlag = kind != 'transfer';
+    final flagActive = _excludeFromStats || _excludeFromBudget;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: [
+          _chip(
+            context,
+            icon: Icons.calendar_today_rounded,
+            label: dateLabel,
+            onTap: _pickDate,
+          ),
+          _chip(
+            context,
+            icon: Icons.sell_outlined,
+            label: tagLabel,
+            active: selectedTags.isNotEmpty,
+            onTap: () async {
+              final result = await TagSelector.show(
+                context,
+                selectedTagIds: _selectedTagIds,
+              );
+              if (result != null) {
+                setState(() => _selectedTagIds = result);
+              }
+            },
+          ),
+          _chip(
+            context,
+            icon: attachmentCount > 0 ? Icons.image : Icons.image_outlined,
+            label: attachmentCount > 0 ? '$attachmentCount' : null,
+            active: attachmentCount > 0,
+            onTap: () => _handleAttachmentTap(savedAttachments),
+          ),
+          if (showFlag)
+            _chip(
+              context,
+              icon: flagActive ? Icons.flag : Icons.outlined_flag,
+              active: flagActive,
+              onTap: _showFlagsDialog,
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 快捷胶囊 chip（钱迹式）：嵌入模式白底浮于灰页面，弹窗模式灰底浮于白面板。
+  Widget _chip(
+    BuildContext context, {
+    IconData? icon,
+    String? label,
+    bool active = false,
+    required VoidCallback onTap,
+  }) {
+    final color = active
+        ? Theme.of(context).colorScheme.primary
+        : BeeTokens.textSecondary(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: widget.embedded
+                ? BeeTokens.surfaceKey(context)
+                : BeeTokens.surfaceKeySecondary(context),
+            borderRadius: BorderRadius.circular(17),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: color),
+                if (label != null) const SizedBox(width: 4),
+              ],
+              if (label != null)
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 钱迹式金额卡片：账户行 + 币种/备注/大金额行 + 折算预览。
+  Widget _buildAmountCard(BuildContext context, TextTheme text) {
+    final kind = widget.transactionKind;
+    final amountColor = kind == 'expense'
+        ? BeeTokens.expenseColor(context, ref)
+        : kind == 'income'
+            ? BeeTokens.incomeColor(context, ref)
+            : BeeTokens.textPrimary(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        color: widget.embedded
+            ? BeeTokens.surfaceKey(context)
+            : BeeTokens.surfaceInput(context),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 账户选择（仅在启用时显示）
+          if (widget.showAccountPicker)
+            Consumer(
+              builder: (context, ref, _) {
+                final accountFeatureAsync =
+                    ref.watch(accountFeatureEnabledProvider);
+                return accountFeatureAsync.when(
+                  data: (enabled) {
+                    if (!enabled) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: AccountSelector(
+                        selectedAccountId: _selectedAccountId,
+                        ledgerId: widget.ledgerId,
+                        // 币种优先联动:账户列表只显示当前所选币种的账户
+                        filterCurrency: _txCurrency(),
+                        // 账户隐藏(#240)E1 钉住:编辑态原账户若已隐藏,补回并打灰标
+                        pinnedAccountId: widget.initialAccountId,
+                        onAccountSelected: (accountId) {
+                          setState(() {
+                            _selectedAccountId = accountId;
+                            _selectedAccountCurrency = null; // 异步刷新
+                          });
+                          if (accountId != null) {
+                            _loadAccountCurrency(accountId);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
+            ),
+          // 备注 + 币种 + 金额
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildCurrencyChip(context),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  focusNode: _noteFocusNode,
+                  controller: _noteCtrl,
+                  style: TextStyle(
+                    color: BeeTokens.textPrimary(context),
+                    fontSize: 15,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context).txNoteHint,
+                    hintStyle: TextStyle(
+                      color: BeeTokens.textTertiary(context),
+                      fontSize: 15,
+                    ),
+                    isDense: true,
+                    border: InputBorder.none,
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    contentPadding: EdgeInsets.zero,
+                    // 历史备注图标作为前缀
+                    prefixIcon: _frequentNotes.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () async {
+                              await showDialog(
+                                context: context,
+                                builder: (context) => NotePickerDialog(
+                                  ledgerId: widget.ledgerId,
+                                  categoryId: widget.categoryId,
+                                  categorySyncId: widget.categorySyncId,
+                                  onNotePicked: (note) {
+                                    setState(() {
+                                      _noteCtrl.text = note;
+                                      _noteCtrl.selection =
+                                          TextSelection.fromPosition(
+                                        TextPosition(offset: note.length),
+                                      );
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                            child: Icon(
+                              Icons.history,
+                              color: BeeTokens.iconSecondary(context),
+                              size: 20,
+                            ),
+                          )
+                        : null,
+                    prefixIconConstraints: _frequentNotes.isNotEmpty
+                        ? const BoxConstraints(minWidth: 36, minHeight: 20)
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 金额列：运算模式先显示表达式小字，下方大字金额（按类别着色）
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (_op != null)
+                    Text(
+                      '${_fmtTrim(_acc.abs())} ${_opGlyph(_op!)}',
+                      style: text.bodySmall?.copyWith(
+                        color: BeeTokens.textSecondary(context),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  Text(
+                    _amountStr,
+                    style: TextStyle(
+                      fontSize: 30,
+                      height: 1.1,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                      color: amountColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // 折算预览（仅外币时出现）
+          _buildCurrencySection(context),
+        ],
+      ),
+    );
+  }
+
+  /// 金额数值格式化：最多两位小数、去尾零。
+  String _fmtTrim(double v) {
+    final s = v.toStringAsFixed(2);
+    final r = s.contains('.')
+        ? s.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')
+        : s;
+    return r.endsWith('.') ? r.substring(0, r.length - 1) : r;
   }
 
   /// 交易标记弹窗：两个标记开关。
@@ -1434,123 +1526,6 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
         );
       },
     );
-  }
-
-  Widget _buildRowContent(List<Tag> selectedTags, int attachmentCount,
-      List<TransactionAttachment> savedAttachments) {
-    final l10n = AppLocalizations.of(context);
-    final hasAttachments = attachmentCount > 0;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: BeeTokens.surfaceInput(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          // 标签部分（可点击展开）
-          Expanded(
-            child: GestureDetector(
-              onTap: () async {
-                final result = await TagSelector.show(
-                  context,
-                  selectedTagIds: _selectedTagIds,
-                );
-                if (result != null) {
-                  setState(() {
-                    _selectedTagIds = result;
-                  });
-                }
-              },
-              behavior: HitTestBehavior.opaque,
-              child: selectedTags.isEmpty
-                  ? Text(
-                      l10n.tagSelectTitle,
-                      style: TextStyle(
-                        color: BeeTokens.textTertiary(context),
-                        fontSize: 14,
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: selectedTags.map((tag) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: TagChip(
-                              name: tag.name,
-                              color: tag.color,
-                              size: TagChipSize.small,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-            ),
-          ),
-          // 间距代替分隔线
-          const SizedBox(width: 16),
-          // 附件部分（图标 + 数字）
-          GestureDetector(
-            onTap: () => _handleAttachmentTap(savedAttachments),
-            behavior: HitTestBehavior.opaque,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  hasAttachments ? Icons.image : Icons.image_outlined,
-                  size: 18,
-                  color: hasAttachments
-                      ? Theme.of(context).colorScheme.primary
-                      : BeeTokens.iconSecondary(context),
-                ),
-                if (hasAttachments) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    '$attachmentCount',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          // 旗标图标:紧跟附件图标。转账(两个标记都不适用)→ 不渲染。
-          ..._buildFlagIcon(),
-        ],
-      ),
-    );
-  }
-
-  /// 账单标记旗标图标:点击打开标记弹窗。
-  /// 可见性:转账(income/expense 均不适用)时整体不渲染。
-  /// active 态(任一标记为真)用主题色 + 实心旗;否则与附件图标一致的次级灰 + 空心旗。
-  List<Widget> _buildFlagIcon() {
-    final kind = widget.transactionKind;
-    final showStats = kind != 'transfer';
-    final showBudget = kind == 'expense';
-    // 两个开关都不适用(转账)→ 不显示旗标触发器
-    if (!showStats && !showBudget) return const [];
-
-    final active = _excludeFromStats || _excludeFromBudget;
-    return [
-      const SizedBox(width: 16),
-      GestureDetector(
-        onTap: _showFlagsDialog,
-        behavior: HitTestBehavior.opaque,
-        child: Icon(
-          active ? Icons.flag : Icons.outlined_flag,
-          size: 18,
-          color: active
-              ? ref.watch(primaryColorProvider)
-              : BeeTokens.iconSecondary(context),
-        ),
-      ),
-    ];
   }
 
   Future<void> _handleAttachmentTap(

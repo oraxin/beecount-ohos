@@ -2324,6 +2324,66 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to delete this record?'**
   String get deleteConfirmMessage;
 
+  /// No description provided for @detailFieldAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get detailFieldAmount;
+
+  /// No description provided for @detailFieldCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get detailFieldCategory;
+
+  /// No description provided for @detailFieldAccountExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense Account'**
+  String get detailFieldAccountExpense;
+
+  /// No description provided for @detailFieldAccountIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income Account'**
+  String get detailFieldAccountIncome;
+
+  /// No description provided for @detailFieldTransferOut.
+  ///
+  /// In en, this message translates to:
+  /// **'From Account'**
+  String get detailFieldTransferOut;
+
+  /// No description provided for @detailFieldTransferIn.
+  ///
+  /// In en, this message translates to:
+  /// **'To Account'**
+  String get detailFieldTransferIn;
+
+  /// No description provided for @detailFieldTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get detailFieldTime;
+
+  /// No description provided for @detailFieldTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get detailFieldTags;
+
+  /// No description provided for @detailFieldNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get detailFieldNote;
+
+  /// No description provided for @detailFieldAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos'**
+  String get detailFieldAttachments;
+
   /// No description provided for @mineSlogan.
   ///
   /// In en, this message translates to:
@@ -11246,6 +11306,12 @@ abstract class AppLocalizations {
   /// **'Unknown Ledger'**
   String get billCardUnknownLedger;
 
+  /// No description provided for @billDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction Detail'**
+  String get billDetailTitle;
+
   /// No description provided for @aiPromptEditTitle.
   ///
   /// In en, this message translates to:
@@ -12109,6 +12175,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Deleted'**
   String get commonDeleted;
+
+  /// No description provided for @commonDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get commonDuplicate;
 
   /// No description provided for @attachmentExportTitle.
   ///
@@ -14485,6 +14557,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please enter the rate for this entry before saving'**
   String get txRateMissingHint;
+
+  /// No description provided for @txNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add a note…'**
+  String get txNoteHint;
+
+  /// No description provided for @txSaveAndAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & New'**
+  String get txSaveAndAgain;
 
   /// No description provided for @txCrossCurrencyTransferBlocked.
   ///

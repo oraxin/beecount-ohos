@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' as d;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../providers.dart';
@@ -18,15 +18,17 @@ import '../../services/billing/post_processor.dart';
 import '../../services/attachment_service.dart';
 import '../../services/data/tx_author_service.dart';
 
-/// 交易编辑器页面
-/// 支持创建/编辑收入、支出和转账记录
+/// 交易编辑器页面（钱迹式单页）
+///
+/// 顶部分段切换 支出/收入/转账；分类网格常驻上半区；底部内嵌金额面板
+/// （账户 / 币种 / 备注 / 大金额 + 自绘键盘）。支持创建 / 编辑 / 复制。
+/// quickAdd 参数保留兼容旧调用（现所有调用方均为 true），单页模式不再分支。
 class TransactionEditorPage extends ConsumerStatefulWidget {
   final bool isCopy;
   final String initialKind; // 'expense', 'income', or 'transfer'
-  // quickAdd: 点击分类后在当前弹窗上叠加金额输入
   final bool quickAdd;
   final int? initialCategoryId;
-  final String? initialNote; // 用于金额输入弹窗回填备注
+  final String? initialNote;
   final double? initialAmount;
   final DateTime? initialDate;
   final int? editingTransactionId;
@@ -88,137 +90,216 @@ class TransactionEditorPage extends ConsumerStatefulWidget {
       );
 
   @override
-  ConsumerState<TransactionEditorPage> createState() => _TransactionEditorPageState();
+  ConsumerState<TransactionEditorPage> createState() =>
+      _TransactionEditorPageState();
 }
 
-class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage>
-    with SingleTickerProviderStateMixin {
-  late TabController _tab;
-  bool _autoOpened = false;
+class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
+  late String _kind; // 'expense' / 'income' / 'transfer'
+  Category? _selectedCategory;
+  int? _defaultAccountId; // 新建模式按类别异步解析的默认账户
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
-    // 设置初始tab: 0=支出, 1=收入, 2=转账
-    if (widget.initialKind == 'income') {
-      _tab.index = 1;
-    } else if (widget.initialKind == 'transfer') {
-      _tab.index = 2;
-    } else {
-      _tab.index = 0;
+    _kind = widget.initialKind;
+    // 新建模式：异步解析默认账户（编辑/复制保持调用方传入值）
+    if (_kind != 'transfer') {
+      _resolveDefaultAccount();
     }
-
-    // 若需要自动打开金额输入，则在首帧后查询分类并触发
-    // 注意：转账类型不走这个逻辑
-    if (widget.quickAdd && widget.initialCategoryId != null && widget.initialKind != 'transfer') {
+    // 编辑/复制模式：首帧后解析初始分类并选中（§7 共享账本 synthetic id 走
+    // SharedLedger* 反查）；转账类型由 TransferForm 自行处理
+    if (widget.initialCategoryId != null && _kind != 'transfer') {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted || _autoOpened) return;
+        if (!mounted) return;
         final repo = ref.read(repositoryProvider);
-        // §7 共享账本:initialCategoryId 可能是 synthetic(< 0)— Editor 编辑
-        // 共享账本下记的 tx,反查走 SharedLedger* 表。
         Category? c;
         if (widget.initialCategoryId! < 0 && repo is LocalRepository) {
-          c = await repo.db.findCategoryBySyntheticId(widget.initialCategoryId!);
+          c = await repo.db
+              .findCategoryBySyntheticId(widget.initialCategoryId!);
         } else {
           c = await repo.getCategoryById(widget.initialCategoryId!);
         }
-        if (c != null && mounted) {
-          // 切换到对应的 tab
-          final idx = c.kind == 'income' ? 1 : 0;
-          if (_tab.index != idx) _tab.animateTo(idx);
-          _autoOpened = true;
-          // 直接调用 onPick 逻辑，打开金额输入
-          // ignore: use_build_context_synchronously
-          await _onCategorySelected(context, c, c.kind);
-        }
+        if (!mounted || c == null) return;
+        final k = c.kind == 'income' ? 'income' : 'expense';
+        setState(() {
+          _kind = k;
+          _selectedCategory = c;
+        });
       });
     }
-    // 注意：转账编辑模式不需要在这里做任何操作，让 TransferForm 自己处理
+  }
+
+  /// 新建模式默认账户：按当前类别（支出/收入默认账户可不同）异步解析。
+  Future<void> _resolveDefaultAccount() async {
+    if (widget.isCopy || widget.editingTransactionId != null) return;
+    if (widget.initialAccountId != null) return;
+    final ledgerId = ref.read(currentLedgerIdProvider);
+    final acc = await _getDefaultAccountId(_kind, ledgerId);
+    if (!mounted) return;
+    setState(() => _defaultAccountId = acc);
+  }
+
+  void _switchKind(String kind) {
+    if (kind == _kind) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _kind = kind;
+      _selectedCategory = null;
+    });
+    if (kind != 'transfer') _resolveDefaultAccount();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final ledgerId = ref.read(currentLedgerIdProvider);
+
     return Scaffold(
-      body: Column(
-        children: [
-          // 紧凑顶部：去除多余留白 + 选中下划线
-          PrimaryHeader(
-            title: '',
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-            bottom: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 44,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: TabBar(
-                            controller: _tab,
-                            isScrollable: false,
-                            labelColor: BeeTokens.textPrimary(context),
-                            unselectedLabelColor: BeeTokens.textSecondary(context),
-                            indicator: UnderlineTabIndicator(
-                              borderSide:
-                                  BorderSide(width: 2, color: BeeTokens.textPrimary(context)),
-                              insets: const EdgeInsets.symmetric(horizontal: 0),
-                            ),
-                            tabs: [
-                              Tab(text: AppLocalizations.of(context)!.categoryExpense),
-                              Tab(text: AppLocalizations.of(context)!.categoryIncome),
-                              Tab(text: AppLocalizations.of(context)!.transferTitle),
-                            ],
+      backgroundColor: BeeTokens.scaffoldBackground(context),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(context, l10n),
+            Expanded(
+              child: _kind == 'transfer'
+                  ? TransferForm(
+                      onTransferComplete: () {
+                        Navigator.pop(context);
+                      },
+                      initialFromAccountId: widget.initialAccountId,
+                      initialToAccountId: widget.initialToAccountId,
+                      editingTransactionId: widget.editingTransactionId,
+                      initialAmount: widget.initialAmount,
+                      initialNote: widget.initialNote,
+                      initialDate: widget.initialDate,
+                      initialTagIds: widget.initialTagIds,
+                      initialExcludeFromStats: widget.initialExcludeFromStats,
+                      initialExcludeFromBudget: widget.initialExcludeFromBudget,
+                      initialCurrencyCode: widget.initialCurrencyCode,
+                      initialNativeAmount: widget.initialNativeAmount,
+                    )
+                  : Column(
+                      children: [
+                        // 分类网格常驻上半区（选中高亮由宿主持有）
+                        Expanded(
+                          child: CategorySelector(
+                            key: ValueKey('cats-$_kind'),
+                            kind: _kind,
+                            selectedId: _selectedCategory?.id,
+                            initialCategoryId: widget.initialCategoryId,
+                            onCategorySelected: (c) =>
+                                setState(() => _selectedCategory = c),
                           ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(AppLocalizations.of(context)!.commonCancel,
-                            style: TextStyle(color: BeeTokens.textPrimary(context))),
-                      )
-                    ],
-                  ),
-                ),
-              ],
+                        // 底部内嵌金额面板（钱迹式）
+                        AmountEditorSheet(
+                          key: ValueKey('amount-$_kind'),
+                          categoryName: _selectedCategory?.name ?? '',
+                          categoryId: _selectedCategory?.id,
+                          categorySyncId: (_selectedCategory != null &&
+                                  _selectedCategory!.id < 0)
+                              ? _selectedCategory!.syncId
+                              : null,
+                          initialDate: widget.initialDate ?? DateTime.now(),
+                          initialAmount: widget.initialAmount,
+                          initialNote: widget.initialNote,
+                          initialAccountId:
+                              widget.initialAccountId ?? _defaultAccountId,
+                          initialTagIds: widget.initialTagIds,
+                          showAccountPicker: true,
+                          ledgerId: ledgerId,
+                          editingTransactionId: widget.editingTransactionId,
+                          transactionKind: _kind,
+                          initialExcludeFromStats:
+                              widget.initialExcludeFromStats,
+                          initialExcludeFromBudget:
+                              widget.initialExcludeFromBudget,
+                          initialCurrencyCode: widget.initialCurrencyCode,
+                          initialNativeAmount: widget.initialNativeAmount,
+                          allowContinueAdding: !widget.isCopy &&
+                              widget.editingTransactionId == null,
+                          embedded: true,
+                          canSubmit: _selectedCategory != null,
+                          onSubmit: _submitTransaction,
+                        ),
+                      ],
+                    ),
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                CategorySelector(
-                  kind: 'expense',
-                  onCategorySelected: (c) => _onCategorySelected(context, c, 'expense'),
-                  initialCategoryId: widget.initialCategoryId,
-                ),
-                CategorySelector(
-                  kind: 'income',
-                  onCategorySelected: (c) => _onCategorySelected(context, c, 'income'),
-                  initialCategoryId: widget.initialCategoryId,
-                ),
-                TransferForm(
-                  onTransferComplete: () {
-                    // 关闭交易编辑器
-                    Navigator.pop(context);
-                  },
-                  initialFromAccountId: widget.initialAccountId,
-                  initialToAccountId: widget.initialToAccountId,
-                  editingTransactionId: widget.editingTransactionId,
-                  initialAmount: widget.initialAmount,
-                  initialNote: widget.initialNote,
-                  initialDate: widget.initialDate,
-                  initialTagIds: widget.initialTagIds,
-                  initialExcludeFromStats: widget.initialExcludeFromStats,
-                  initialExcludeFromBudget: widget.initialExcludeFromBudget,
-                  initialCurrencyCode: widget.initialCurrencyCode,
-                  initialNativeAmount: widget.initialNativeAmount,
-                ),
-              ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 顶部栏：X 关闭 + 支出/收入/转账 分段切换（钱迹式胶囊）
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: SizedBox(
+        height: 44,
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(
+                Icons.close_rounded,
+                size: 24,
+                color: BeeTokens.textPrimary(context),
+              ),
             ),
-          ),
-        ],
+            Expanded(child: Center(child: _buildSegmented(context, l10n))),
+            const SizedBox(width: 48),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSegmented(BuildContext context, AppLocalizations l10n) {
+    final segments = [
+      ('expense', l10n.categoryExpense),
+      ('income', l10n.categoryIncome),
+      ('transfer', l10n.transferTitle),
+    ];
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: BeeTokens.surfaceCapsule(context),
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: segments.map((s) {
+          final selected = _kind == s.$1;
+          return GestureDetector(
+            onTap: () => _switchKind(s.$1),
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? BeeTokens.surfaceKey(context)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Text(
+                s.$2,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: selected ? primary : BeeTokens.textSecondary(context),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -238,7 +319,8 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage>
       if (ledger == null) return null;
 
       // 3. 获取默认账户信息
-      final account = await ref.read(accountByIdProvider(defaultAccountId).future);
+      final account =
+          await ref.read(accountByIdProvider(defaultAccountId).future);
       if (account == null) return null;
 
       // 账户隐藏 #240 E3:默认账户已被隐藏时按「无默认」处理(defensive 兜底,
@@ -254,214 +336,165 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage>
     }
   }
 
-  Future<void> _onCategorySelected(BuildContext context, Category c, String kind) async {
-    if (!widget.quickAdd) {
-      Navigator.pop(context, c);
-      return;
-    }
+  /// 提交交易（原分类选中后的保存逻辑，迁移到单页模式）
+  Future<void> _submitTransaction(AmountEditorResult res) async {
+    final c = _selectedCategory;
+    if (c == null) return; // canSubmit 已门控，双保险
+    final kind = _kind;
     final ledgerId = ref.read(currentLedgerIdProvider);
 
-    // 确定初始账户ID（新建时使用默认账户，编辑时保持原值）
-    int? initialAccountId = widget.initialAccountId;
-    if (!widget.isCopy && widget.editingTransactionId == null && widget.initialAccountId == null) {
-      // 新建模式：尝试获取默认账户
-      initialAccountId = await _getDefaultAccountId(kind, ledgerId);
+    final repo = ref.read(repositoryProvider);
+    final attachmentService = ref.read(attachmentServiceProvider);
+    int transactionId;
+    // §7 v25:Category 是来自 SharedLedger* 的 synthetic (id<0)时,
+    // categoryId 留 null,override 走 syncId。同理对 account/toAccount。
+    // res.accountId 可能也是 synthetic(Account picker 用同一规则)。
+    final isSyntheticCategory = c.id < 0;
+    final isSyntheticAccount = res.accountId != null && res.accountId! < 0;
+    final categoryIdForWrite = isSyntheticCategory ? null : c.id;
+    // synthetic / picker 返 null 时账户 id 写 null。
+    // addTransaction 的 accountId 是 int?(直接传 null 即写 null);
+    // updateTransaction 的 accountId 是 dynamic,dart null 被解释成
+    // Value.absent(=不更新该字段) → 用户选"不选择账户"无效;必须显式
+    // 传 d.Value<int?>(null) 才会真清空旧 accountId。
+    final accountIdForAdd = isSyntheticAccount ? null : res.accountId;
+    final accountIdForUpdate = d.Value<int?>(accountIdForAdd);
+    final categoryOverride = isSyntheticCategory ? c.syncId : null;
+    final accountOverride = isSyntheticAccount
+        ? await _resolveSyncIdByAccountId(res.accountId!, ledgerId)
+        : null;
+    if (widget.editingTransactionId != null) {
+      // 编辑模式：使用repository更新交易
+      await repo.updateTransaction(
+        id: widget.editingTransactionId!,
+        type: kind,
+        amount: res.amount,
+        categoryId: categoryIdForWrite,
+        note: res.note,
+        happenedAt: res.date,
+        accountId: accountIdForUpdate,
+        categorySyncIdOverride: categoryOverride,
+        accountSyncIdOverride: accountOverride,
+        excludeFromStats: res.excludeFromStats,
+        excludeFromBudget: res.excludeFromBudget,
+        currencyCode: res.currencyCode,
+        nativeAmount: res.nativeAmount,
+      );
+      transactionId = widget.editingTransactionId!;
+      // 共享账本:本地 lastEditedByUserId 立即回填,UI 头像组直接展示
+      // 当前 user 为编辑人(否则要等 server 下次 pull 才回来)
+      await TxAuthorService.markEdited(ref, transactionId);
+    } else {
+      transactionId = await repo.addTransaction(
+        ledgerId: ledgerId,
+        type: kind,
+        amount: res.amount,
+        categoryId: categoryIdForWrite,
+        happenedAt: res.date,
+        note: res.note,
+        accountId: accountIdForAdd,
+        categorySyncIdOverride: categoryOverride,
+        accountSyncIdOverride: accountOverride,
+        excludeFromStats: res.excludeFromStats,
+        excludeFromBudget: res.excludeFromBudget,
+        currencyCode: res.currencyCode,
+        nativeAmount: res.nativeAmount,
+      );
+      // 共享账本:新建本地 tx 也回填创建人 + 编辑人(同一个 user)
+      await TxAuthorService.markCreated(ref, transactionId);
+    }
+    // 保存待上传的附件
+    if (res.pendingAttachments.isNotEmpty) {
+      await attachmentService.saveAttachments(
+        transactionId: transactionId,
+        sourceFiles: res.pendingAttachments,
+        startIndex: 0,
+      );
+      // 刷新附件列表缓存
+      ref.read(attachmentListRefreshProvider.notifier).state++;
+    }
+    // 更新标签关联
+    // §7 共享账本:tag.id < 0 是 synthetic(Owner tag from SharedLedger*),
+    // 主表 Tags 没该行,不能直接写 transaction_tags.tag_id。分两类:
+    // - 正数 id → 写 transaction_tags 主表(老路径)
+    // - 负数 id → 走 SharedLedgerTags 反查 syncId → 写 transaction_tag_overrides
+    final normalTagIds = res.tagIds.where((id) => id >= 0).toList();
+    final syntheticTagIds = res.tagIds.where((id) => id < 0).toList();
+
+    if (normalTagIds.isNotEmpty) {
+      await repo.updateTransactionTags(
+        transactionId: transactionId,
+        tagIds: normalTagIds,
+      );
+      ref.read(tagListRefreshProvider.notifier).state++;
+    } else if (widget.editingTransactionId != null) {
+      // 编辑模式没主表 tag → 清掉旧主表关联
+      await repo.removeAllTagsFromTransaction(transactionId);
+      ref.read(tagListRefreshProvider.notifier).state++;
     }
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: BeeTokens.surfaceSheet(context),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => AmountEditorSheet(
-        categoryName: c.name,
-        categoryId: c.id,
-        categorySyncId: c.id < 0 ? c.syncId : null,
-        initialDate: widget.initialDate ?? DateTime.now(),
-        initialAmount: widget.initialAmount,
-        initialNote: widget.initialNote,
-        initialAccountId: initialAccountId,
-        initialTagIds: widget.initialTagIds,
-        showAccountPicker: true,
-        ledgerId: ledgerId,
-        editingTransactionId: widget.editingTransactionId,
-        transactionKind: kind,
-        initialExcludeFromStats: widget.initialExcludeFromStats,
-        initialExcludeFromBudget: widget.initialExcludeFromBudget,
-        initialCurrencyCode: widget.initialCurrencyCode,
-        initialNativeAmount: widget.initialNativeAmount,
-        allowContinueAdding: widget.quickAdd &&
-            !widget.isCopy &&
-            widget.editingTransactionId == null &&
-            kind != 'transfer',
-        onSubmit: (res) async {
-          final repo = ref.read(repositoryProvider);
-          final attachmentService = ref.read(attachmentServiceProvider);
-          int transactionId;
-          // §7 v25:Category 是来自 SharedLedger* 的 synthetic (id<0)时,
-          // categoryId 留 null,override 走 syncId。同理对 account/toAccount。
-          // res.accountId 可能也是 synthetic(Account picker 用同一规则)。
-          final isSyntheticCategory = c.id < 0;
-          final isSyntheticAccount =
-              res.accountId != null && res.accountId! < 0;
-          final categoryIdForWrite = isSyntheticCategory ? null : c.id;
-          // synthetic / picker 返 null 时账户 id 写 null。
-          // addTransaction 的 accountId 是 int?(直接传 null 即写 null);
-          // updateTransaction 的 accountId 是 dynamic,dart null 被解释成
-          // Value.absent(=不更新该字段) → 用户选"不选择账户"无效;必须显式
-          // 传 d.Value<int?>(null) 才会真清空旧 accountId。
-          final accountIdForAdd = isSyntheticAccount ? null : res.accountId;
-          final accountIdForUpdate = d.Value<int?>(accountIdForAdd);
-          final categoryOverride = isSyntheticCategory ? c.syncId : null;
-          final accountOverride =
-              isSyntheticAccount ? await _resolveSyncIdByAccountId(res.accountId!, ledgerId) : null;
-          if (widget.editingTransactionId != null) {
-            // 编辑模式：使用repository更新交易
-            await repo.updateTransaction(
-              id: widget.editingTransactionId!,
-              type: kind,
-              amount: res.amount,
-              categoryId: categoryIdForWrite,
-              note: res.note,
-              happenedAt: res.date,
-              accountId: accountIdForUpdate,
-              categorySyncIdOverride: categoryOverride,
-              accountSyncIdOverride: accountOverride,
-              excludeFromStats: res.excludeFromStats,
-              excludeFromBudget: res.excludeFromBudget,
-              currencyCode: res.currencyCode,
-              nativeAmount: res.nativeAmount,
-            );
-            transactionId = widget.editingTransactionId!;
-            // 共享账本:本地 lastEditedByUserId 立即回填,UI 头像组直接展示
-            // 当前 user 为编辑人(否则要等 server 下次 pull 才回来)
-            await TxAuthorService.markEdited(ref, transactionId);
-          } else {
-            transactionId = await repo.addTransaction(
-              ledgerId: ledgerId,
-              type: kind,
-              amount: res.amount,
-              categoryId: categoryIdForWrite,
-              happenedAt: res.date,
-              note: res.note,
-              accountId: accountIdForAdd,
-              categorySyncIdOverride: categoryOverride,
-              accountSyncIdOverride: accountOverride,
-              excludeFromStats: res.excludeFromStats,
-              excludeFromBudget: res.excludeFromBudget,
-              currencyCode: res.currencyCode,
-              nativeAmount: res.nativeAmount,
-            );
-            // 共享账本:新建本地 tx 也回填创建人 + 编辑人(同一个 user)
-            await TxAuthorService.markCreated(ref, transactionId);
-          }
-          // 保存待上传的附件
-          if (res.pendingAttachments.isNotEmpty) {
-            await attachmentService.saveAttachments(
-              transactionId: transactionId,
-              sourceFiles: res.pendingAttachments,
-              startIndex: 0,
-            );
-            // 刷新附件列表缓存
-            ref.read(attachmentListRefreshProvider.notifier).state++;
-          }
-          // 更新标签关联
-          // §7 共享账本:tag.id < 0 是 synthetic(Owner tag from SharedLedger*),
-          // 主表 Tags 没该行,不能直接写 transaction_tags.tag_id。分两类:
-          // - 正数 id → 写 transaction_tags 主表(老路径)
-          // - 负数 id → 走 SharedLedgerTags 反查 syncId → 写 transaction_tag_overrides
-          final normalTagIds = res.tagIds.where((id) => id >= 0).toList();
-          final syntheticTagIds = res.tagIds.where((id) => id < 0).toList();
-
-          if (normalTagIds.isNotEmpty) {
-            await repo.updateTransactionTags(
-              transactionId: transactionId,
-              tagIds: normalTagIds,
-            );
-            ref.read(tagListRefreshProvider.notifier).state++;
-          } else if (widget.editingTransactionId != null) {
-            // 编辑模式没主表 tag → 清掉旧主表关联
-            await repo.removeAllTagsFromTransaction(transactionId);
-            ref.read(tagListRefreshProvider.notifier).state++;
-          }
-
-          // §7 写 override:先反查 tx.syncId + 把 synthetic tag_id 翻译成
-          // Owner tag syncId,再 upsert 进 TransactionTagOverrides
-          if (repo is LocalRepository) {
-            final txRow = await (repo.db.select(repo.db.transactions)
-                  ..where((t) => t.id.equals(transactionId)))
-                .getSingleOrNull();
-            final txSyncId = txRow?.syncId;
-            if (txSyncId != null) {
-              await (repo.db.delete(repo.db.transactionTagOverrides)
-                    ..where((t) => t.transactionSyncId.equals(txSyncId)))
-                  .go();
-              if (syntheticTagIds.isNotEmpty) {
-                final allShared =
-                    await repo.db.select(repo.db.sharedLedgerTags).get();
-                final now = DateTime.now().toUtc();
-                for (final sid in syntheticTagIds) {
-                  for (final s in allShared) {
-                    if (syntheticIdForSyncId(s.syncId) == sid) {
-                      await repo.db
-                          .into(repo.db.transactionTagOverrides)
-                          .insert(
-                        TransactionTagOverridesCompanion.insert(
-                          transactionSyncId: txSyncId,
-                          tagSyncId: s.syncId,
-                          createdAt: now,
-                        ),
-                      );
-                      break;
-                    }
-                  }
-                }
-                ref.read(tagListRefreshProvider.notifier).state++;
+    // §7 写 override:先反查 tx.syncId + 把 synthetic tag_id 翻译成
+    // Owner tag syncId,再 upsert 进 TransactionTagOverrides
+    if (repo is LocalRepository) {
+      final txRow = await (repo.db.select(repo.db.transactions)
+            ..where((t) => t.id.equals(transactionId)))
+          .getSingleOrNull();
+      final txSyncId = txRow?.syncId;
+      if (txSyncId != null) {
+        await (repo.db.delete(repo.db.transactionTagOverrides)
+              ..where((t) => t.transactionSyncId.equals(txSyncId)))
+            .go();
+        if (syntheticTagIds.isNotEmpty) {
+          final allShared =
+              await repo.db.select(repo.db.sharedLedgerTags).get();
+          final now = DateTime.now().toUtc();
+          for (final sid in syntheticTagIds) {
+            for (final s in allShared) {
+              if (syntheticIdForSyncId(s.syncId) == sid) {
+                await repo.db.into(repo.db.transactionTagOverrides).insert(
+                      TransactionTagOverridesCompanion.insert(
+                        transactionSyncId: txSyncId,
+                        tagSyncId: s.syncId,
+                        createdAt: now,
+                      ),
+                    );
+                break;
               }
-              // 这里**不再**重复 recordLedgerChange(transaction:update)。
-              // 之前为了"override 变化也走 push"专门补一条 update,但
-              // - addTransaction / updateTransaction 已经登记过一次 change
-              // - _serializeEntityForPush('transaction') 在 push 时**统一**读 DB
-              //   最新状态(包括 transaction_tag_overrides 表),payload 自然含
-              //   最新 overrides
-              // 结论:那条补登记的 update 跟前面的 create/update 推同样 payload,
-              // 服务端 sync_changes 表凭空多一条 row(已观察到共享账本 Editor
-              // 创建 tx 时 1 秒内 2 条 identical upsert)。直接砍。
             }
           }
-          // 统一处理：自动/手动同步与状态刷新（后台静默）
-          PostProcessor.sync(ref, ledgerId: ledgerId);
-          // 刷新：账本笔数与全局统计
-          ref.invalidate(countsForLedgerProvider(ledgerId));
-          ref.read(statsRefreshProvider.notifier).state++;
-          // 刷新：预算数据
-          ref.read(budgetRefreshProvider.notifier).state++;
-          // 更新小组件数据（后台执行，不阻塞UI）
-          if (context.mounted) {
-            updateAppWidget(ref, context);
-          }
-          // 双击完成：只收起金额面板，保留分类选择页供下一笔使用。
-          // 普通完成：按原流程关闭金额面板和分类选择页。
-          if (ctx.mounted && Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
-          if (!res.continueAdding &&
-              context.mounted &&
-              Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-          if (res.continueAdding && context.mounted) {
-            showToast(
-              context,
-              AppLocalizations.of(context).transactionSavedNextCategory,
-            );
-          }
-          // 反馈：轻微触感 + 系统点击音
-          HapticFeedback.lightImpact();
-          SystemSound.play(SystemSoundType.click);
-        },
-      ),
-    );
+          ref.read(tagListRefreshProvider.notifier).state++;
+        }
+        // 不重复 recordLedgerChange:addTransaction / updateTransaction 已登记,
+        // push 时统一读 DB 最新状态,payload 自然含最新 overrides。
+      }
+    }
+    // 统一处理：自动/手动同步与状态刷新（后台静默）
+    PostProcessor.sync(ref, ledgerId: ledgerId);
+    // 刷新：账本笔数与全局统计
+    ref.invalidate(countsForLedgerProvider(ledgerId));
+    ref.read(statsRefreshProvider.notifier).state++;
+    // 刷新：预算数据
+    ref.read(budgetRefreshProvider.notifier).state++;
+    // 更新小组件数据（后台执行，不阻塞UI）
+    if (mounted) {
+      updateAppWidget(ref, context);
+    }
+    // 单页模式：普通保存关闭整页；「再记」留在本页继续录下一笔
+    if (!res.continueAdding) {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } else {
+      if (mounted) {
+        showToast(
+          context,
+          AppLocalizations.of(context).transactionSavedNextCategory,
+        );
+      }
+    }
+    // 反馈：轻微触感 + 系统点击音
+    HapticFeedback.lightImpact();
+    SystemSound.play(SystemSoundType.click);
   }
 
   /// §7 v25:account picker 返 synthetic Account(id<0)时,把 id 反查

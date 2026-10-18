@@ -1228,6 +1228,36 @@ class AppLocalizationsKo extends AppLocalizations {
   String get deleteConfirmMessage => '이 기록을 삭제하시겠습니까?';
 
   @override
+  String get detailFieldAmount => '금액';
+
+  @override
+  String get detailFieldCategory => '분류';
+
+  @override
+  String get detailFieldAccountExpense => '지출 계좌';
+
+  @override
+  String get detailFieldAccountIncome => '수입 계좌';
+
+  @override
+  String get detailFieldTransferOut => '출금 계좌';
+
+  @override
+  String get detailFieldTransferIn => '입금 계좌';
+
+  @override
+  String get detailFieldTime => '시간';
+
+  @override
+  String get detailFieldTags => '태그';
+
+  @override
+  String get detailFieldNote => '메모';
+
+  @override
+  String get detailFieldAttachments => '사진';
+
+  @override
   String get mineSlogan => '꿀벌 가계부, 한 푼도 소중하게';
 
   @override
@@ -5911,6 +5941,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get billCardUnknownLedger => '알 수 없는 가계부';
 
   @override
+  String get billDetailTitle => '거래 내역';
+
+  @override
   String get aiPromptEditTitle => '프롬프트 편집기';
 
   @override
@@ -6359,6 +6392,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get commonDeleted => '삭제됨';
+
+  @override
+  String get commonDuplicate => '복사';
 
   @override
   String get attachmentExportTitle => '첨부파일 내보내기';
@@ -7659,6 +7695,12 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get txRateMissingHint => 'Please enter the rate for this entry before saving';
+
+  @override
+  String get txNoteHint => '메모를 입력하세요…';
+
+  @override
+  String get txSaveAndAgain => '이어서 기록';
 
   @override
   String get txCrossCurrencyTransferBlocked => 'Cross-currency transfers are not supported yet. Record two entries or use same-currency accounts.';

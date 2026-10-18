@@ -1228,6 +1228,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteConfirmMessage => 'Are you sure you want to delete this record?';
 
   @override
+  String get detailFieldAmount => 'Amount';
+
+  @override
+  String get detailFieldCategory => 'Category';
+
+  @override
+  String get detailFieldAccountExpense => 'Expense Account';
+
+  @override
+  String get detailFieldAccountIncome => 'Income Account';
+
+  @override
+  String get detailFieldTransferOut => 'From Account';
+
+  @override
+  String get detailFieldTransferIn => 'To Account';
+
+  @override
+  String get detailFieldTime => 'Time';
+
+  @override
+  String get detailFieldTags => 'Tags';
+
+  @override
+  String get detailFieldNote => 'Note';
+
+  @override
+  String get detailFieldAttachments => 'Photos';
+
+  @override
   String get mineSlogan => 'Bee Accounting, Every Penny Counts';
 
   @override
@@ -5911,6 +5941,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billCardUnknownLedger => 'Unknown Ledger';
 
   @override
+  String get billDetailTitle => 'Transaction Detail';
+
+  @override
   String get aiPromptEditTitle => 'Prompt Editor';
 
   @override
@@ -6359,6 +6392,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonDeleted => 'Deleted';
+
+  @override
+  String get commonDuplicate => 'Duplicate';
 
   @override
   String get attachmentExportTitle => 'Export Attachments';
@@ -7659,6 +7695,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get txRateMissingHint => 'Please enter the rate for this entry before saving';
+
+  @override
+  String get txNoteHint => 'Tap to add a note…';
+
+  @override
+  String get txSaveAndAgain => 'Save & New';
 
   @override
   String get txCrossCurrencyTransferBlocked => 'Cross-currency transfers are not supported yet. Record two entries or use same-currency accounts.';
