@@ -168,8 +168,21 @@ Future<void> main() async {
   // 执行,失败不致命。
   unawaited(_runOrphanFileGcOnce(container));
 
+  // 首次启动判定前置到 runApp 之前同步完成:SharedPreferences 在上面的
+  // _initializeAppMode 已加载完毕,这里复用同一缓存实例同步读值,通过
+  // override 注入 shouldShowWelcomeProvider —— 首帧拿到的就是最终判定,
+  // 消除"非首次启动在进主界面前短暂闪现欢迎/配置页"的异步时序窗口
+  // (OHOS 真机反馈:v0.3.1)。
+  final prefs = await SharedPreferences.getInstance();
+  final welcomeShown = prefs.getBool('welcome_shown') ?? false;
+
   runApp(ProviderScope(
     parent: container,
+    overrides: [
+      // 非首次启动首帧即为 false,直接 SplashPage → 主界面;首次启动为 true,
+      // 后续 welcomeCheckProvider 的置 true 是幂等操作。
+      shouldShowWelcomeProvider.overrideWith((ref) => !welcomeShown),
+    ],
     child: const MainApp(),
   ));
 }

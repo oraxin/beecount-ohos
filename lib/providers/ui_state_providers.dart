@@ -354,14 +354,18 @@ final appSplashInitProvider = FutureProvider<void>((ref) async {
 final shouldShowWelcomeProvider = StateProvider<bool>((ref) => false);
 
 // 初始化检查是否需要显示欢迎页面
+// 注意:首次判定已在 main() 里同步预读并通过 override 注入
+// shouldShowWelcomeProvider 首帧初值;本 provider 保留用于日志诊断与首次
+// 启动的幂等置位。
 final welcomeCheckProvider = FutureProvider<bool>((ref) async {
   final prefs = await SharedPreferences.getInstance();
   final welcomeShown = prefs.getBool('welcome_shown') ?? false;
   if (!welcomeShown) {
-    print('👋 首次启动，需要展示欢迎页面');
+    logger.info('welcome', '首次启动(welcome_shown=false),展示欢迎页');
     ref.read(shouldShowWelcomeProvider.notifier).state = true;
     return true;
   }
+  logger.info('welcome', '非首次启动(welcome_shown=true),直接进入主界面');
   return false;
 });
 
