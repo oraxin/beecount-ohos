@@ -1228,6 +1228,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteConfirmMessage => '确定要删除这条记账吗？';
 
   @override
+  String get detailFieldAmount => '金额';
+
+  @override
+  String get detailFieldCategory => '分类';
+
+  @override
+  String get detailFieldAccountExpense => '支出账户';
+
+  @override
+  String get detailFieldAccountIncome => '收入账户';
+
+  @override
+  String get detailFieldTransferOut => '转出账户';
+
+  @override
+  String get detailFieldTransferIn => '转入账户';
+
+  @override
+  String get detailFieldTime => '时间';
+
+  @override
+  String get detailFieldTags => '标签';
+
+  @override
+  String get detailFieldNote => '备注';
+
+  @override
+  String get detailFieldAttachments => '图片';
+
+  @override
   String get mineSlogan => '蜜蜂记账，一笔一蜜';
 
   @override
@@ -5905,6 +5935,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get billCardUnknownLedger => '未知账本';
 
   @override
+  String get billDetailTitle => '账单详情';
+
+  @override
   String get aiPromptEditTitle => '提示词编辑';
 
   @override
@@ -6353,6 +6386,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonDeleted => '已删除';
+
+  @override
+  String get commonDuplicate => '复制';
 
   @override
   String get attachmentExportTitle => '导出附件';
@@ -7653,6 +7689,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get txRateMissingHint => '请手动填写本笔汇率后保存';
+
+  @override
+  String get txNoteHint => '点此输入备注…';
+
+  @override
+  String get txSaveAndAgain => '再记';
 
   @override
   String get txCrossCurrencyTransferBlocked => '暂不支持跨币种转账,请分别记两笔或使用同币种账户';
@@ -9897,6 +9939,36 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get deleteConfirmMessage => '確定要刪除這條記帳嗎？';
+
+  @override
+  String get detailFieldAmount => '金額';
+
+  @override
+  String get detailFieldCategory => '分類';
+
+  @override
+  String get detailFieldAccountExpense => '支出帳戶';
+
+  @override
+  String get detailFieldAccountIncome => '收入帳戶';
+
+  @override
+  String get detailFieldTransferOut => '轉出帳戶';
+
+  @override
+  String get detailFieldTransferIn => '轉入帳戶';
+
+  @override
+  String get detailFieldTime => '時間';
+
+  @override
+  String get detailFieldTags => '標籤';
+
+  @override
+  String get detailFieldNote => '備註';
+
+  @override
+  String get detailFieldAttachments => '圖片';
 
   @override
   String get mineSlogan => '蜜蜂記帳，一筆一蜜';
@@ -14576,6 +14648,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get billCardUnknownLedger => '未知帳本';
 
   @override
+  String get billDetailTitle => '帳單詳情';
+
+  @override
   String get aiPromptEditTitle => '提示詞編輯';
 
   @override
@@ -15024,6 +15099,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get commonDeleted => '已刪除';
+
+  @override
+  String get commonDuplicate => '複製';
 
   @override
   String get attachmentExportTitle => '匯出附件';
@@ -16324,6 +16402,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get txRateMissingHint => '請手動填寫本筆匯率後儲存';
+
+  @override
+  String get txNoteHint => '點此輸入備註…';
+
+  @override
+  String get txSaveAndAgain => '再記';
 
   @override
   String get txCrossCurrencyTransferBlocked => '暫不支援跨幣種轉帳,請分別記兩筆或使用同幣種帳戶';

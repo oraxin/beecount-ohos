@@ -5,12 +5,10 @@ import 'package:flutter_list_view/flutter_list_view.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../data/db.dart';
 import '../../providers.dart';
-import '../../providers/budget_providers.dart';
 import '../../services/system/logger_service.dart';
 import '../../widgets/ui/ui.dart';
 import '../../widgets/biz/biz.dart';
 import '../../styles/tokens.dart';
-import '../../services/billing/post_processor.dart';
 import '../../utils/transaction_edit_utils.dart';
 import '../../utils/category_utils.dart';
 import '../category_icon.dart';
@@ -21,6 +19,8 @@ import '../../widgets/biz/transaction_receipt_dialog.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/attachment_service.dart';
 import '../../utils/month_range.dart';
+import 'swipe_action_row.dart';
+import 'transaction_detail_sheet.dart';
 
 /// 可复用的交易列表组件
 /// 支持显示分组的交易列表，包含日期头部和交易项
@@ -539,7 +539,7 @@ class TransactionListState extends ConsumerState<TransactionList> {
             }
 
             // 钱迹式每日卡片：交易行属于当日卡片主体，最后一行补下圆角；
-            // clipBehavior 让 Dismissible 的红色滑动背景不越出圆角。
+            // clipBehavior 让左滑操作按钮的背景不越出圆角。
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
@@ -549,40 +549,30 @@ class TransactionListState extends ConsumerState<TransactionList> {
                     : BorderRadius.zero,
               ),
               clipBehavior: Clip.antiAlias,
-              child: Dismissible(
-                key: Key('tx-${it.t.id}-$index'), // 添加索引避免key冲突
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  color: Colors.red,
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                confirmDismiss: (direction) async {
-                  return await AppDialog.confirm<bool>(
-                        context,
-                        title: AppLocalizations.of(context).deleteConfirmTitle,
-                        message:
-                            AppLocalizations.of(context).deleteConfirmMessage,
-                      ) ??
-                      false;
-                },
-                onDismissed: (direction) async {
-                  final repo = ref.read(repositoryProvider);
-                  await repo.deleteTransaction(it.t.id);
-
-                  if (!context.mounted) return;
-                  final curLedger = ref.read(currentLedgerIdProvider);
-                  ref.invalidate(countsForLedgerProvider(curLedger));
-                  ref.read(statsRefreshProvider.notifier).state++;
-                  ref.read(budgetRefreshProvider.notifier).state++;
-                  PostProcessor.sync(ref, ledgerId: curLedger);
-
-                  if (context.mounted) {
-                    showToast(
-                        context, AppLocalizations.of(context).ledgersDeleted);
-                  }
-                },
+              child: SwipeActionRow(
+                key: Key('tx-swipe-${it.t.id}'),
+                actions: [
+                  SwipeAction(
+                    label: AppLocalizations.of(context).commonEdit,
+                    background: const Color(0xFFF59E0B),
+                    foreground: Colors.white,
+                    onTap: () async {
+                      switchToStreamMode();
+                      await TransactionEditUtils.editTransaction(
+                          context, ref, it.t, it.category);
+                    },
+                  ),
+                  SwipeAction(
+                    label: AppLocalizations.of(context).commonDelete,
+                    background: BeeTokens.expenseColor(context, ref),
+                    foreground: Colors.white,
+                    onTap: () async {
+                      switchToStreamMode();
+                      await TransactionEditUtils.deleteTransaction(
+                          context, ref, it.t);
+                    },
+                  ),
+                ],
                 child: Column(
                   children: [
                     Builder(
@@ -656,11 +646,27 @@ class TransactionListState extends ConsumerState<TransactionList> {
                           },
                           onTap: () async {
                             switchToStreamMode(); // 用户交互，切换到 Stream 模式
-                            await TransactionEditUtils.editTransaction(
+                            await showTransactionDetailSheet(
                               context,
                               ref,
-                              it.t,
-                              it.category,
+                              transaction: it.t,
+                              category: it.category,
+                              accountName: accountName,
+                              toAccountName: toAccountName,
+                              tags: transactionTags,
+                              attachmentCount: attachmentCount,
+                              onAttachmentTap: attachmentCount > 0
+                                  ? () async {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => AttachmentPreviewPage
+                                              .fromTransaction(
+                                            transactionId: it.t.id,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : null,
                             );
                           },
                           onLongPressStart: (_) =>

@@ -9,6 +9,7 @@ import '../../widgets/ui/ui.dart';
 import '../../widgets/biz/section_card.dart';
 import '../../styles/tokens.dart';
 import '../../utils/ui_scale_extensions.dart';
+import '../../utils/platform_info.dart';
 import '../../providers/theme_providers.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -193,7 +194,17 @@ class _LogCenterPageState extends ConsumerState<LogCenterPage> {
                     spacing: 8.0.scaled(context, ref),
                     runSpacing: 4.0.scaled(context, ref),
                     children: LogPlatform.values.where((platform) {
-                      // 在 Android 上隐藏 iOS，在 iOS 上隐藏 Android
+                      // OHOS 筛选片只在 OHOS 上显示（Android/iOS 无此来源）
+                      if (platform == LogPlatform.ohos && !PlatformInfo.isOhos) {
+                        return false;
+                      }
+                      // 在 Android 上隐藏 iOS，在 iOS 上隐藏 Android，
+                      // 在 OHOS 上 Android/iOS 均无原生日志来源，一并隐藏
+                      if (PlatformInfo.isOhos &&
+                          (platform == LogPlatform.android ||
+                              platform == LogPlatform.ios)) {
+                        return false;
+                      }
                       if (Platform.isAndroid && platform == LogPlatform.ios) {
                         return false;
                       }

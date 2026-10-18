@@ -43,7 +43,8 @@ enum LogLevel {
 enum LogPlatform {
   flutter,
   android,
-  ios;
+  ios,
+  ohos;
 
   String get displayName {
     switch (this) {
@@ -53,6 +54,8 @@ enum LogPlatform {
         return 'Android';
       case LogPlatform.ios:
         return 'iOS';
+      case LogPlatform.ohos:
+        return 'OHOS';
     }
   }
 }
@@ -372,7 +375,9 @@ class LoggerService {
           ? LogPlatform.android
           : platformStr == 'ios'
               ? LogPlatform.ios
-              : LogPlatform.flutter;
+              : platformStr == 'ohos'
+                  ? LogPlatform.ohos
+                  : LogPlatform.flutter;
 
       // 解析日志级别
       final level = _parseLogLevel(levelStr);

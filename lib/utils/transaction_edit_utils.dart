@@ -4,11 +4,44 @@ import '../data/db.dart';
 import '../pages/transaction/transaction_editor_page.dart';
 import '../data/repositories/local/local_repository.dart';
 import '../providers/database_providers.dart';
+import '../providers.dart';
+import '../providers/budget_providers.dart';
 import '../l10n/app_localizations.dart';
-import '../widgets/ui/toast.dart';
+import '../widgets/ui/ui.dart';
+import '../services/billing/post_processor.dart';
 import 'shared_ledger_picker_filter.dart' show syntheticIdForSyncId;
 
 class TransactionEditUtils {
+  /// 删除交易 + 全局状态刷新 + toast（左滑删除 / 详情面板删除共用入口）。
+  /// 内部先弹确认框，取消则不做任何事。
+  static Future<void> deleteTransaction(
+    BuildContext context,
+    WidgetRef ref,
+    Transaction transaction,
+  ) async {
+    final confirmed = await AppDialog.confirm<bool>(
+          context,
+          title: AppLocalizations.of(context).deleteConfirmTitle,
+          message: AppLocalizations.of(context).deleteConfirmMessage,
+        ) ??
+        false;
+    if (!confirmed || !context.mounted) return;
+
+    final repo = ref.read(repositoryProvider);
+    await repo.deleteTransaction(transaction.id);
+
+    if (!context.mounted) return;
+    final curLedger = ref.read(currentLedgerIdProvider);
+    ref.invalidate(countsForLedgerProvider(curLedger));
+    ref.read(statsRefreshProvider.notifier).state++;
+    ref.read(budgetRefreshProvider.notifier).state++;
+    PostProcessor.sync(ref, ledgerId: curLedger);
+
+    if (context.mounted) {
+      showToast(context, AppLocalizations.of(context).ledgersDeleted);
+    }
+  }
+
   static Future<void> copyTransaction(
     BuildContext context,
     WidgetRef ref,
