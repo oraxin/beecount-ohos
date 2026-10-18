@@ -1,5 +1,5 @@
 name: beecount
-description: "A new Flutter project."
+description: "蜜蜂记账OH - BeeCount 的非官方 HarmonyOS 移植版 / Unofficial third-party HarmonyOS port of BeeCount."
 publish_to: 'none'
 version: 0.3.1+1
 

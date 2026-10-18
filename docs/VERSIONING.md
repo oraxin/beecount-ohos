@@ -1,15 +1,17 @@
 # 版本与发布管理规范
 
-> 本文档为所有开发（含 AI 助手）必须遵循的核心规范。
+> 本文档为本仓库（蜜蜂记账 OH / BeeCount for HarmonyOS，第三方移植版）的版本与发布管理规范。
 
 ## 1. 与官方版本的关系
 
+> ⚠️ 本仓库为 [BeeCount](https://github.com/TNT-Likely/BeeCount) 的**非官方第三方移植**，与官方作者及官方项目无关联、未经官方授权或背书；请勿向官方仓库反馈本移植版的问题。
+
 | 项 | 说明 |
 |---|---|
-| 官方仓库 | [TNT-Likely/BeeCount](https://github.com/TNT-Likely/BeeCount)（本仓库 `origin`），版本号格式 `3.8.6`（无 v 前缀） |
+| 官方仓库 | [TNT-Likely/BeeCount](https://github.com/TNT-Likely/BeeCount)（上游），版本号格式 `3.8.6`（无 v 前缀） |
 | 鸿蒙版基线 | 官方 `main` @ `5484496`（2026-10-16，最新 tag **3.8.6** 之后），tag：`baseline-official-3.8.6` |
-| 技术底座 | CPF-Flutter `flutter_flutter` tag `3.27.5-ohos-1.0.8`（对应官方 Flutter 3.27.5，见 [wiki/08 方案](../../../wiki/08-鸿蒙版开发方案与计划.md)） |
-| 上游同步 | 定期 `git fetch origin` 跟进官方 main；因 `pubspec.yaml` 已做鸿蒙版改动，rebase 时注意版本字段与依赖变更冲突 |
+| 技术底座 | CPF-Flutter `flutter_flutter` tag `3.27.5-ohos-1.0.8`（对应官方 Flutter 3.27.5） |
+| 上游同步 | 定期 fetch 上游跟进官方 main；因 `pubspec.yaml` 已做鸿蒙版改动，rebase 时注意版本字段与依赖变更冲突 |
 
 ## 2. 版本号方案（未正式发布用 v0.x.x）
 
