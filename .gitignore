@@ -75,3 +75,6 @@ design-prototypes/
 
 # OHOS 构建专用依赖覆盖(由 tool/ohos 模板复制生成,勿提交)
 pubspec_overrides.yaml
+
+# OHOS 本机签名配置(含证书路径与密文,勿提交;模板见 ohos/build-profile.json5.template)
+ohos/build-profile.json5

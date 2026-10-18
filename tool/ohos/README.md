@@ -1,6 +1,6 @@
 # OHOS 构建与 P0 环境搭建指引
 
-> 对应 [wiki/08-鸿蒙版开发方案与计划.md](../../../wiki/08-鸿蒙版开发方案与计划.md) 的 P0 阶段。
+> 本仓库（蜜蜂记账 OH）的鸿蒙构建环境搭建指引。
 
 ## 1. 获取 CPF-Flutter SDK
 
@@ -65,5 +65,3 @@ path_provider_ohos / shared_preferences_ohos 平台实现 + 镜像官方 pin）�
 5. 待定项结论：share_plus 10.1.1（海报出口）、flutter_image_compress 替代、
    webview_flutter 使用场景
 6. 主干编译：`flutter build hap --debug` 产出 HAP
-
-验证结果记入 `docs/ohos-p0-report.md`（P0 完成时创建）。

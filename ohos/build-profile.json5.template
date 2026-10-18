@@ -1,0 +1,46 @@
+
+{
+  "app": {
+    // 签名配置不入库（含本机证书路径与密文，见根目录 .gitignore）。
+    // 本地构建前二选一：
+    //   1) 在 DevEco Studio 中 File > Project Structure > Signing Configs
+    //      勾选 Automatically generate signature（登录 AGC 账号自动签发调试证书）；
+    //   2) 把本文件复制为同目录 build-profile.json5，并自行填入 signingConfigs
+    //      与 products.signingConfig 字段。
+    "signingConfigs": [],
+    "products": [
+      {
+        "name": "default",
+        // 本地填写：与 signingConfigs 里的 name 一致（自动签名时由 DevEco 生成）
+        "signingConfig": "",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
