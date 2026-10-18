@@ -8,6 +8,7 @@ import '../data/repositories/base_repository.dart';
 import '../l10n/app_localizations.dart';
 import '../services/system/logger_service.dart';
 import '../utils/currencies.dart' show getCurrencySymbol;
+import '../utils/ohos_feature_gate.dart';
 import '../widgets/biz/format_money.dart' show formatMoneyCompact;
 import 'views/budget_view.dart';
 import 'views/bee_trail_view.dart';
@@ -229,6 +230,11 @@ class WidgetManager {
     // "只渲已安装"的快路径,不受影响。
     bool warmUpAllSpecs = false,
   }) async {
+    // OHOS:v0.3.0 范围决策不做桌面小组件,home_widget 无原生实现(通道调用
+    // 一律 MissingPluginException)。所有触发路径(app.dart 前台恢复/系统明暗
+    // 切换、记账后 updateAppWidget、主题色监听、切账本)统一在此收口拦截,
+    // 避免渲染失败刷日志中心。
+    if (!OhosFeatureGate.enableHomeWidgets) return;
     // GRAY 防御:标签参数缺省值为中文,若调用方未传本地化文案,debug 期告警,
     // 避免未来调用方漏传导致英文环境的小组件露出中文。
     assert(() {
