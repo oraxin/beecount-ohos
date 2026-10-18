@@ -154,8 +154,9 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final ledgerId = ref.read(currentLedgerIdProvider);
-    // 键盘弹出时收起分类网格，只保留金额面板贴底（避免压缩变形/溢出）
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    // 键盘弹出时整页上移（钱迹式）：关闭 resize 压缩，改为底部 padding 把
+    // 内容顶出屏幕顶部 —— 分类区自然滚出视口，金额面板贴住键盘，无溢出。
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
     final editor = AmountEditorSheet(
       key: ValueKey('amount-$_kind'),
@@ -186,55 +187,54 @@ class _TransactionEditorPageState extends ConsumerState<TransactionEditorPage> {
 
     return Scaffold(
       backgroundColor: BeeTokens.scaffoldBackground(context),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(context, l10n),
-            Expanded(
-              child: _kind == 'transfer'
-                  ? TransferForm(
-                      onTransferComplete: () {
-                        Navigator.pop(context);
-                      },
-                      initialFromAccountId: widget.initialAccountId,
-                      initialToAccountId: widget.initialToAccountId,
-                      editingTransactionId: widget.editingTransactionId,
-                      initialAmount: widget.initialAmount,
-                      initialNote: widget.initialNote,
-                      initialDate: widget.initialDate,
-                      initialTagIds: widget.initialTagIds,
-                      initialExcludeFromStats: widget.initialExcludeFromStats,
-                      initialExcludeFromBudget: widget.initialExcludeFromBudget,
-                      initialCurrencyCode: widget.initialCurrencyCode,
-                      initialNativeAmount: widget.initialNativeAmount,
-                    )
-                  : keyboardVisible
-                      // 键盘弹出：分类区收起，金额面板贴底
-                      ? Column(
-                          children: [
-                            const Spacer(),
-                            editor,
-                          ],
-                        )
-                      // 常态：分类网格常驻上半区（选中高亮由宿主持有）
-                      : Column(
-                          children: [
-                            Expanded(
-                              child: CategorySelector(
-                                key: ValueKey('cats-$_kind'),
-                                kind: _kind,
-                                selectedId: _selectedCategory?.id,
-                                initialCategoryId: widget.initialCategoryId,
-                                onCategorySelected: (c) =>
-                                    setState(() => _selectedCategory = c),
-                              ),
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: keyboardInset),
+          child: Column(
+            children: [
+              _buildHeader(context, l10n),
+              Expanded(
+                child: _kind == 'transfer'
+                    ? TransferForm(
+                        onTransferComplete: () {
+                          Navigator.pop(context);
+                        },
+                        initialFromAccountId: widget.initialAccountId,
+                        initialToAccountId: widget.initialToAccountId,
+                        editingTransactionId: widget.editingTransactionId,
+                        initialAmount: widget.initialAmount,
+                        initialNote: widget.initialNote,
+                        initialDate: widget.initialDate,
+                        initialTagIds: widget.initialTagIds,
+                        initialExcludeFromStats: widget.initialExcludeFromStats,
+                        initialExcludeFromBudget:
+                            widget.initialExcludeFromBudget,
+                        initialCurrencyCode: widget.initialCurrencyCode,
+                        initialNativeAmount: widget.initialNativeAmount,
+                      )
+                    : Column(
+                        children: [
+                          // 分类网格常驻上半区（选中高亮由宿主持有）
+                          Expanded(
+                            child: CategorySelector(
+                              key: ValueKey('cats-$_kind'),
+                              kind: _kind,
+                              selectedId: _selectedCategory?.id,
+                              initialCategoryId: widget.initialCategoryId,
+                              onCategorySelected: (c) =>
+                                  setState(() => _selectedCategory = c),
                             ),
-                            editor,
-                          ],
-                        ),
-            ),
-          ],
+                          ),
+                          editor,
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

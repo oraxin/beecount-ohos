@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../styles/tokens.dart';
+
 /// 左滑操作项（钱迹式：左滑露出操作按钮，点击按钮执行动作）
 class SwipeAction {
   final String label;
@@ -148,19 +150,24 @@ class _SwipeActionRowState extends State<SwipeActionRow> {
               ],
             ),
           ),
-        // 内容层：向左平移露出操作（拖动中即时跟手，松手后动画吸附）
+        // 内容层：向左平移露出操作（拖动中即时跟手，松手后动画吸附）。
+        // 必须带不透明背景：盖住底层按钮，滑动时按钮才呈「抽屉渐开」露出，
+        // 否则透明内容直接透出按钮（无渐开效果）。
         AnimatedContainer(
           duration:
               _dragging ? Duration.zero : const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(-_offset, 0, 0),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: _onDragStart,
-            onHorizontalDragUpdate: _onDragUpdate,
-            onHorizontalDragEnd: _onDragEnd,
-            onTap: _isOpen ? _close : null,
-            child: widget.child,
+          child: Container(
+            color: BeeTokens.surface(context),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: _onDragStart,
+              onHorizontalDragUpdate: _onDragUpdate,
+              onHorizontalDragEnd: _onDragEnd,
+              onTap: _isOpen ? _close : null,
+              child: widget.child,
+            ),
           ),
         ),
       ],

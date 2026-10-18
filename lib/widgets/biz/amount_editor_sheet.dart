@@ -901,11 +901,8 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
                 child: _TxAuthorAvatars(
                     editingTransactionId: widget.editingTransactionId!),
               ),
-            // 账户选择横滑行（最顶部，与标签互换后的位置）
-            _buildAccountRow(context),
-            const SizedBox(height: 8),
-            // 快捷 chips 行（钱迹式）：日期 / 图片 / 旗标
-            _buildChipsRow(context),
+            // 账户（最前）+ 日期/图片/旗标 同一横滑行
+            _buildAccountAndChipsRow(context),
             const SizedBox(height: 8),
             // 金额卡片：标签 + 备注 + 币种 + 大金额 + 折算预览（钱迹式）
             _buildAmountCard(context, text),
@@ -1140,14 +1137,61 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     );
   }
 
-  /// 钱迹式快捷 chips 行：日期 / 图片 / 旗标（横向滚动胶囊）。
-  Widget _buildChipsRow(BuildContext context) {
+  /// 账户 + 快捷 chips 同一横滑行：账户（首项「不选择账户」）在最前，
+  /// 其后依次为日期/图片/旗标。账户功能未启用时仅显示 chips。
+  Widget _buildAccountAndChipsRow(BuildContext context) {
+    final chips = _buildActionChips(context);
+    if (!widget.showAccountPicker) {
+      return _wrapChips(chips);
+    }
+    return Consumer(
+      builder: (context, ref, _) {
+        final accountFeatureAsync = ref.watch(accountFeatureEnabledProvider);
+        return accountFeatureAsync.when(
+          data: (enabled) {
+            if (!enabled) return _wrapChips(chips);
+            return AccountSelector(
+              selectedAccountId: _selectedAccountId,
+              ledgerId: widget.ledgerId,
+              // 币种优先联动:账户列表只显示当前所选币种的账户
+              filterCurrency: _txCurrency(),
+              // 账户隐藏(#240)E1 钉住:编辑态原账户若已隐藏,补回并打灰标
+              pinnedAccountId: widget.initialAccountId,
+              trailing: chips,
+              onAccountSelected: (accountId) {
+                setState(() {
+                  _selectedAccountId = accountId;
+                  _selectedAccountCurrency = null; // 异步刷新
+                });
+                if (accountId != null) {
+                  _loadAccountCurrency(accountId);
+                }
+              },
+            );
+          },
+          loading: () => _wrapChips(chips),
+          error: (_, __) => _wrapChips(chips),
+        );
+      },
+    );
+  }
+
+  Widget _wrapChips(List<Widget> chips) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(children: chips),
+    );
+  }
+
+  /// 快捷 chips（账户行尾部）：日期 / 图片 / 旗标。
+  List<Widget> _buildActionChips(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final isToday = _date.year == now.year &&
         _date.month == now.month &&
         _date.day == now.day;
-    final showTime = ref.watch(showTransactionTimeProvider);
+    ref.watch(showTransactionTimeProvider);
     final dateLabel =
         isToday ? l10n.calendarToday : '${_date.month}/${_date.day}';
 
@@ -1168,34 +1212,28 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
     final showFlag = kind != 'transfer';
     final flagActive = _excludeFromStats || _excludeFromBudget;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        children: [
-          _chip(
-            context,
-            icon: Icons.calendar_today_rounded,
-            label: dateLabel,
-            onTap: _pickDate,
-          ),
-          _chip(
-            context,
-            icon: attachmentCount > 0 ? Icons.image : Icons.image_outlined,
-            label: attachmentCount > 0 ? '$attachmentCount' : null,
-            active: attachmentCount > 0,
-            onTap: () => _handleAttachmentTap(savedAttachments),
-          ),
-          if (showFlag)
-            _chip(
-              context,
-              icon: flagActive ? Icons.flag : Icons.outlined_flag,
-              active: flagActive,
-              onTap: _showFlagsDialog,
-            ),
-        ],
+    return [
+      _chip(
+        context,
+        icon: Icons.calendar_today_rounded,
+        label: dateLabel,
+        onTap: _pickDate,
       ),
-    );
+      _chip(
+        context,
+        icon: attachmentCount > 0 ? Icons.image : Icons.image_outlined,
+        label: attachmentCount > 0 ? '$attachmentCount' : null,
+        active: attachmentCount > 0,
+        onTap: () => _handleAttachmentTap(savedAttachments),
+      ),
+      if (showFlag)
+        _chip(
+          context,
+          icon: flagActive ? Icons.flag : Icons.outlined_flag,
+          active: flagActive,
+          onTap: _showFlagsDialog,
+        ),
+    ];
   }
 
   /// 快捷胶囊 chip（钱迹式）：嵌入模式白底浮于灰页面，弹窗模式灰底浮于白面板。
@@ -1243,41 +1281,6 @@ class _AmountEditorSheetState extends ConsumerState<AmountEditorSheet> {
           ),
         ),
       ),
-    );
-  }
-
-  /// 账户选择横滑行（最顶部；与标签互换后的位置）。
-  /// 仅 showAccountPicker 且账户功能启用时渲染。
-  Widget _buildAccountRow(BuildContext context) {
-    if (!widget.showAccountPicker) return const SizedBox.shrink();
-    return Consumer(
-      builder: (context, ref, _) {
-        final accountFeatureAsync = ref.watch(accountFeatureEnabledProvider);
-        return accountFeatureAsync.when(
-          data: (enabled) {
-            if (!enabled) return const SizedBox.shrink();
-            return AccountSelector(
-              selectedAccountId: _selectedAccountId,
-              ledgerId: widget.ledgerId,
-              // 币种优先联动:账户列表只显示当前所选币种的账户
-              filterCurrency: _txCurrency(),
-              // 账户隐藏(#240)E1 钉住:编辑态原账户若已隐藏,补回并打灰标
-              pinnedAccountId: widget.initialAccountId,
-              onAccountSelected: (accountId) {
-                setState(() {
-                  _selectedAccountId = accountId;
-                  _selectedAccountCurrency = null; // 异步刷新
-                });
-                if (accountId != null) {
-                  _loadAccountCurrency(accountId);
-                }
-              },
-            );
-          },
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
-        );
-      },
     );
   }
 
