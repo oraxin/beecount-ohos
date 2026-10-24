@@ -5,6 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'providers/theme_providers.dart';
+
 import 'app.dart';
 import 'widgets/biz/login_2fa_challenge_view.dart';
 import 'widgets/ui/toast.dart';
@@ -175,6 +177,10 @@ Future<void> main() async {
   // (OHOS 真机反馈:v0.3.1)。
   final prefs = await SharedPreferences.getInstance();
   final welcomeShown = prefs.getBool('welcome_shown') ?? false;
+  // 同理:主题色也同步预读注入 —— primaryColorInitProvider 是异步恢复,首帧
+  // SplashPage 会先渲染默认蜜金色、恢复完成后才跳变成用户主题色(OHOS 真机
+  // 反馈:"启动页先黄后青")。首帧直接拿最终色,启动窗→Splash→主界面同色。
+  final savedPrimaryColor = prefs.getInt('primaryColor');
 
   runApp(ProviderScope(
     parent: container,
@@ -182,6 +188,9 @@ Future<void> main() async {
       // 非首次启动首帧即为 false,直接 SplashPage → 主界面;首次启动为 true,
       // 后续 welcomeCheckProvider 的置 true 是幂等操作。
       shouldShowWelcomeProvider.overrideWith((ref) => !welcomeShown),
+      // 首帧即用户主题色;primaryColorInitProvider 稍后的恢复写入同值,幂等。
+      if (savedPrimaryColor != null)
+        primaryColorProvider.overrideWith((ref) => Color(savedPrimaryColor)),
     ],
     child: const MainApp(),
   ));

@@ -437,18 +437,12 @@ class ActiveCloudRuntimeController extends AsyncNotifier<ActiveCloudRuntime?> {
             password: config.beecountCloudPassword,
           );
         }
-        try {
-          final user = await beeAuth.currentUser;
-          if (user != null) {
-            logger.info(
-                'CloudSync', 'BeeCount Cloud session ready: ${user.email}');
-          } else if ((config.beecountCloudEmail ?? '').isNotEmpty) {
-            logger.info('CloudSync', 'BeeCount Cloud 未登录,等首次 API 触发恢复');
-          }
-        } catch (error, stack) {
-          logger.warning('CloudSync',
-              'BeeCount Cloud 初始 currentUser 失败: $error', stack);
-        }
+        // 只为打一条 session 日志。绝不能 await:离线时 currentUser 会走
+        // refresh / recovery login 的网络请求,挂到 TCP 超时(可达 2 分钟),
+        // 把整个 runtime 构建堵住 → 保存账单链路(TxAuthorService await
+        // beecountCloudProviderInstance)转圈卡很久才跳转。后台恢复即可,
+        // 首次 API 调用本来就会触发 session 恢复。
+        unawaited(_logBeeCountSession(beeAuth, config));
         final engine = SyncEngine(
           db: db,
           provider: provider,
@@ -808,6 +802,23 @@ final beecountCloudProviderInstance =
   final provider = runtime?.provider;
   return provider is BeeCountCloudProvider ? provider : null;
 });
+
+/// 后台探测 BeeCount Cloud session 状态(仅打日志)。这个调用在离线时会走
+/// refresh / recovery login 的网络请求挂到超时,只能在 runtime 构建路径之外跑。
+Future<void> _logBeeCountSession(
+    CloudAuthService auth, CloudServiceConfig config) async {
+  try {
+    final user = await auth.currentUser;
+    if (user != null) {
+      logger.info('CloudSync', 'BeeCount Cloud session ready: ${user.email}');
+    } else if ((config.beecountCloudEmail ?? '').isNotEmpty) {
+      logger.info('CloudSync', 'BeeCount Cloud 未登录,等首次 API 触发恢复');
+    }
+  } catch (error, stack) {
+    logger.warning(
+        'CloudSync', 'BeeCount Cloud 初始 currentUser 失败: $error', stack);
+  }
+}
 
 /// BeeCount Cloud 服务端版本号。Mine 页面 / 云同步页都能直接用;失败就
 /// null,UI 自己隐藏。非 BeeCount Cloud 模式直接 null。
