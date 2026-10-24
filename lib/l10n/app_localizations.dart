@@ -1334,6 +1334,18 @@ abstract class AppLocalizations {
   /// **'Category Ranking'**
   String get analyticsCategoryRanking;
 
+  /// No description provided for @analyticsTagRanking.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag Ranking'**
+  String get analyticsTagRanking;
+
+  /// No description provided for @analyticsTagRankingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tag data for this period'**
+  String get analyticsTagRankingEmpty;
+
   /// No description provided for @analyticsTotalAmount.
   ///
   /// In en, this message translates to:

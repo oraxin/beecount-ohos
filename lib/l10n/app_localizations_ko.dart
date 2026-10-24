@@ -689,6 +689,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get analyticsCategoryRanking => '카테고리 순위';
 
   @override
+  String get analyticsTagRanking => '태그 순위';
+
+  @override
+  String get analyticsTagRankingEmpty => '이 기간에는 태그 데이터가 없습니다';
+
+  @override
   String get analyticsTotalAmount => '합계';
 
   @override

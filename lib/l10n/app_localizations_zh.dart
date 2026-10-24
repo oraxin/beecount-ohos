@@ -689,6 +689,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get analyticsCategoryRanking => '分类排行';
 
   @override
+  String get analyticsTagRanking => '标签排行';
+
+  @override
+  String get analyticsTagRankingEmpty => '当前周期暂无标签数据';
+
+  @override
   String get analyticsTotalAmount => '总计';
 
   @override
@@ -9400,6 +9406,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get analyticsCategoryRanking => '分類排行';
+
+  @override
+  String get analyticsTagRanking => '標籤排行';
+
+  @override
+  String get analyticsTagRankingEmpty => '當前週期暫無標籤數據';
 
   @override
   String get analyticsTotalAmount => '總計';

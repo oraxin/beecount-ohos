@@ -283,6 +283,8 @@
   "analyticsYear": "Year",
   "analyticsAll": "All",
   "analyticsCategoryRanking": "Category Ranking",
+  "analyticsTagRanking": "Tag Ranking",
+  "analyticsTagRankingEmpty": "No tag data for this period",
   "analyticsTotalAmount": "Total",
   "analyticsNoDataSubtext": "Swipe left/right to switch periods, or tap button to toggle income/expense",
   "analyticsSwipeHint": "Swipe left/right to change period",

@@ -2695,6 +2695,17 @@ class LocalRepository extends BaseRepository {
       _tagRepo.getTagStats(tagId, ledgerId: ledgerId, start: start, end: end);
 
   @override
+  Future<List<({int id, String name, String? color, double total})>>
+      getTagTotalsInRange({
+    int? ledgerId,
+    required String type,
+    DateTime? start,
+    DateTime? end,
+  }) =>
+      _tagRepo.getTagTotalsInRange(
+          ledgerId: ledgerId, type: type, start: start, end: end);
+
+  @override
   Future<List<Transaction>> getTransactionsByTag(int tagId) =>
       _tagRepo.getTransactionsByTag(tagId);
 

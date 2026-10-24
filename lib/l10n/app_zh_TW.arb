@@ -277,6 +277,8 @@
   "analyticsAvgIncome": "{avgLabel}收入： ",
   "analyticsBalance": "結餘： ",
   "analyticsCategoryRanking": "分類排行",
+  "analyticsTagRanking": "標籤排行",
+  "analyticsTagRankingEmpty": "當前週期暫無標籤數據",
   "analyticsTotalAmount": "總計",
   "analyticsDailyAvg": "日均",
   "analyticsExpense": "支出",
