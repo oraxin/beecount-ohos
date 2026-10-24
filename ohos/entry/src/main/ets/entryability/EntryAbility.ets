@@ -30,32 +30,26 @@ export default class EntryAbility extends FlutterAbility {
   }
 
   // 启动窗背景色跟随 App 内配置的主题色:Flutter 首帧前的启动窗由
-  // startWindowBackground 静态资源决定,无法表达用户配置色。这里在窗口阶段
-  // 创建时读 Flutter SharedPreferences(shared_preferences_ohos 插件的存储:
-  // 文件名 FlutterSharedPreferences,dart 层 key 带 flutter. 前缀)里的
-  // primaryColor(ARGB int,见 theme_providers.dart 落盘逻辑),动态覆盖窗口
-  // 背景色,让「启动窗→启动屏→主界面」同色一贯到底。读取失败一律回退白色,
-  // 不影响启动。
+  // startWindowBackground 静态资源决定,无法表达用户配置色。必须在窗口内容
+  // 加载(super 会 loadContent)之前同步设好背景色——放在 super 之后异步设,
+  // 窗口已按白色启动屏显示了,用户永远看不到主题色。鸿蒙无法彻底取消启动窗
+  // (系统机制),这里让它一进窗口就变成主题色。读取失败一律回退白色,不影响启动。
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    super.onWindowStageCreate(windowStage)
     try {
       const prefs = dataPreferences.getPreferencesSync(this.context, {
         name: 'FlutterSharedPreferences',
       });
-      const saved = parseSavedColor(
-        prefs.getSync('flutter.primaryColor', '') as number | string);
+      const raw = prefs.getSync('flutter.primaryColor', '') as number | string;
+      const saved = parseSavedColor(raw);
       const colorValue = saved ?? DEFAULT_PRIMARY_COLOR;
       // ARGB int → '#AARRGGBB'(setWindowBackgroundColor 接受的格式)
       const colorStr = `#${(colorValue >>> 0).toString(16).padStart(8, '0')}`;
-      windowStage.getMainWindow((err, win) => {
-        if (err.code !== 0 || !win) {
-          return;
-        }
-        win.setWindowBackgroundColor(colorStr);
-      });
+      console.info(`startWindowBg raw=${raw} color=${colorStr}`);
+      windowStage.getMainWindowSync().setWindowBackgroundColor(colorStr);
     } catch (e) {
       // 首次安装(尚未有 preferences 文件)或读取异常:保持 startWindowBackground
       // 的白色默认色,不影响启动。
     }
+    super.onWindowStageCreate(windowStage)
   }
 }
