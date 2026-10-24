@@ -933,7 +933,8 @@ class _CategoryCard extends ConsumerWidget {
                       circular: true,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  // OHOS 字体行高偏高,固定间距给足余量,避免格子 BOTTOM OVERFLOWED
+                  const SizedBox(height: 4),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
@@ -947,7 +948,6 @@ class _CategoryCard extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     AppLocalizations.of(context).categoryMigrationTransactionLabel(item.transactionCount),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -1239,23 +1239,26 @@ class _DialogSubCategoryCard extends StatelessWidget {
                 circular: true,
               ),
             ),
-            const SizedBox(height: 4),
+            // OHOS 字体行高偏高:不加间距 + 收紧行高,避免格子 BOTTOM OVERFLOWED
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Text(
                 CategoryUtils.getDisplayName(category.name, context),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10, height: 1.2),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             Text(
-              AppLocalizations.of(context).categoryMigrationTransactionLabel(transactionCount),
+              AppLocalizations.of(context)
+                  .categoryMigrationTransactionLabel(transactionCount),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-                fontSize: 9,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: 9,
+                    height: 1.2,
+                  ),
             ),
           ],
         ),
