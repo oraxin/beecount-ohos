@@ -408,6 +408,108 @@ class LocalTagRepository implements TagRepository {
     );
   }
 
+  /// 标签排行:时间段内按标签聚合的统计金额(排除不计入收支的交易),降序。
+  /// [type] = 'expense' | 'income'。
+  /// 共享账本 synthetic tag(负 id)经 TransactionTagOverrides 聚合补入,
+  /// 与本地标签互斥落表,不会重复计数。
+  @override
+  Future<List<({int id, String name, String? color, double total})>>
+      getTagTotalsInRange({
+    int? ledgerId,
+    required String type,
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    final result = <int, ({int id, String name, String? color, double total})>{};
+
+    // 1) 本地真实标签:一条 GROUP BY 聚合
+    final ledgerFilter = ledgerId != null ? 'AND tx.ledger_id = ?' : '';
+    final startFilter = start != null ? 'AND tx.happened_at >= ?' : '';
+    final endFilter = end != null ? 'AND tx.happened_at < ?' : '';
+    final vars = <d.Variable>[d.Variable.withString(type)];
+    if (ledgerId != null) vars.add(d.Variable.withInt(ledgerId));
+    if (start != null) vars.add(d.Variable.withDateTime(start));
+    if (end != null) vars.add(d.Variable.withDateTime(end));
+    final rows = await db.customSelect(
+      '''
+      SELECT t.id as id, t.name as name, t.color as color,
+        COALESCE(SUM(COALESCE(tx.native_amount, tx.amount)), 0) as total
+      FROM transaction_tags tt
+      INNER JOIN transactions tx ON tt.transaction_id = tx.id
+      INNER JOIN tags t ON t.id = tt.tag_id
+      WHERE tx.type = ? AND tx.exclude_from_stats = 0
+        $ledgerFilter $startFilter $endFilter
+      GROUP BY t.id
+      ''',
+      variables: vars,
+      readsFrom: {db.transactionTags, db.transactions, db.tags},
+    ).get();
+    double parseAmount(dynamic v) {
+      if (v is double) return v;
+      if (v is int) return v.toDouble();
+      if (v is BigInt) return v.toDouble();
+      if (v is num) return v.toDouble();
+      return 0.0;
+    }
+
+    for (final row in rows) {
+      final id = row.read<int>('id');
+      result[id] = (
+        id: id,
+        name: row.read<String>('name'),
+        color: row.read<String?>('color'),
+        total: parseAmount(row.data['total']),
+      );
+    }
+
+    // 2) 共享账本 synthetic 标签:全量 overrides + 一次 IN 查询,dart 内存聚合
+    final sharedTags = await db.select(db.sharedLedgerTags).get();
+    if (sharedTags.isNotEmpty) {
+      final overrides = await db.select(db.transactionTagOverrides).get();
+      if (overrides.isNotEmpty) {
+        final txSyncIds =
+            overrides.map((o) => o.transactionSyncId).toSet().toList();
+        final q = db.select(db.transactions)
+          ..where((t) => t.syncId.isIn(txSyncIds))
+          ..where((t) => t.type.equals(type))
+          ..where((t) => t.excludeFromStats.equals(false));
+        if (ledgerId != null) {
+          q.where((t) => t.ledgerId.equals(ledgerId));
+        }
+        if (start != null) {
+          q.where((t) => t.happenedAt.isBiggerOrEqualValue(start));
+        }
+        if (end != null) {
+          q.where((t) => t.happenedAt.isSmallerThanValue(end));
+        }
+        final txs = await q.get();
+        final txBySyncId = {for (final t in txs) t.syncId: t};
+        final agg = <String, double>{}; // tagSyncId → total
+        for (final o in overrides) {
+          final tx = txBySyncId[o.transactionSyncId];
+          if (tx == null) continue;
+          agg[o.tagSyncId] =
+              (agg[o.tagSyncId] ?? 0) + (tx.nativeAmount ?? tx.amount);
+        }
+        for (final s in sharedTags) {
+          final total = agg[s.syncId];
+          if (total == null || total <= 0) continue;
+          final syntheticId = _syntheticIdForSyncId(s.syncId);
+          result[syntheticId] = (
+            id: syntheticId,
+            name: s.name,
+            color: s.color,
+            total: total,
+          );
+        }
+      }
+    }
+
+    final list = result.values.where((e) => e.total > 0).toList()
+      ..sort((a, b) => b.total.compareTo(a.total));
+    return list;
+  }
+
   @override
   Future<List<Transaction>> getTransactionsByTag(int tagId) async {
     final query = db.select(db.transactions).join([

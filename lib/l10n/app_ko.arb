@@ -144,6 +144,8 @@
   "analyticsYear": "년",
   "analyticsAll": "전체",
   "analyticsCategoryRanking": "카테고리 순위",
+  "analyticsTagRanking": "태그 순위",
+  "analyticsTagRankingEmpty": "이 기간에는 태그 데이터가 없습니다",
   "analyticsTotalAmount": "합계",
   "analyticsNoDataSubtext": "좌우로 스와이프해 기간을 전환하거나 버튼을 눌러 수입/지출을 전환하세요",
   "analyticsSwipeHint": "좌우로 스와이프해 기간 전환",

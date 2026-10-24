@@ -102,6 +102,16 @@ abstract class TagRepository {
   Future<({int count, double expense, double income})> getTagStats(int tagId,
       {int? ledgerId, DateTime? start, DateTime? end});
 
+  /// 标签排行:时间段内按标签聚合的统计金额,降序。
+  /// [type] = 'expense' | 'income';共享账本 synthetic tag 一并计入。
+  Future<List<({int id, String name, String? color, double total})>>
+      getTagTotalsInRange({
+    int? ledgerId,
+    required String type,
+    DateTime? start,
+    DateTime? end,
+  });
+
   /// 获取标签下的所有交易
   Future<List<Transaction>> getTransactionsByTag(int tagId);
 

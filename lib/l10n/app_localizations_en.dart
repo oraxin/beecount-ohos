@@ -689,6 +689,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analyticsCategoryRanking => 'Category Ranking';
 
   @override
+  String get analyticsTagRanking => 'Tag Ranking';
+
+  @override
+  String get analyticsTagRankingEmpty => 'No tag data for this period';
+
+  @override
   String get analyticsTotalAmount => 'Total';
 
   @override

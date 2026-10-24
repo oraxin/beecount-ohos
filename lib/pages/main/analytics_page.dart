@@ -9,6 +9,7 @@ import '../../widgets/charts/line_chart.dart';
 import '../../widgets/charts/category_pie_chart.dart';
 import '../../widgets/analytics/analytics_summary.dart';
 import '../../widgets/analytics/category_rank_row.dart';
+import '../../widgets/analytics/tag_rank_row.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/export/share_poster_service.dart';
 import '../../data/db.dart' as db;
@@ -644,11 +645,14 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                     catData;
                 int txCount;
                 double sum;
+                List<({int id, String name, String? color, double total})> tagData;
 
                 if (_type == 'balance') {
                   // balance模式：list[3]是收入数据，list[4]是支出数据，list[5]是收入交易数量
                   final incomeData = list[3];
                   final expenseData = list[4];
+                  // 结余视角不显示标签排行
+                  tagData = const [];
 
                   // 计算结余序列
                   seriesRaw = _calculateBalanceSeries(incomeData, expenseData);
@@ -672,6 +676,8 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                   seriesRaw = list[1];
                   txCount = list[2] as int;
                   sum = catData.fold<double>(0, (a, b) => a + b.total);
+                  tagData = (list.length > 3 ? list[3] : const [])
+                      as List<({int id, String name, String? color, double total})>;
                 }
 
                 // 统一取数列的数值数组
@@ -1001,6 +1007,37 @@ class _AnalyticsPageState extends ConsumerState<AnalyticsPage> {
                             selMonth: selMonth,
                             subCategories: item.subCategories,
                           ),
+                      // 标签排行：紧随分类排行，展示方式一致（结余/饼图视角不显示）
+                      if (_type != 'balance' && !_showPieChart) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          AppLocalizations.of(context).analyticsTagRanking,
+                          style: BeeTextTokens.title(context),
+                        ),
+                        const SizedBox(height: 4),
+                        if (tagData.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Text(
+                              AppLocalizations.of(context).analyticsTagRankingEmpty,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: BeeTokens.textTertiary(context),
+                                  ),
+                            ),
+                          )
+                        else
+                          for (final tag in tagData)
+                            TagRankRow(
+                              id: tag.id,
+                              name: tag.name,
+                              color: tag.color,
+                              value: tag.total,
+                              percent: sum == 0 ? 0 : tag.total / sum,
+                            ),
+                      ],
                       // 底部留白，避免被悬浮 Tab 栏遮挡
                       SizedBox(height: 56 + 12 + MediaQuery.of(context).viewPadding.bottom + 16),
                     ],
@@ -1049,6 +1086,9 @@ Future<List<dynamic>> _loadCategoryData(
     repo.countByTypeInRange(
         ledgerId: ledgerId, type: type, start: start, end: end),
     repo.getSharedSyntheticCategoriesForLedger(ledgerId),
+    // 标签排行数据（本函数仅在支出/收入视角被调用）
+    repo.getTagTotalsInRange(
+        ledgerId: ledgerId, type: type, start: start, end: end),
   ]);
 
   final hierarchyData = results[0] as List<
@@ -1064,7 +1104,7 @@ Future<List<dynamic>> _loadCategoryData(
   final aggregated =
       await _aggregateTopLevelCategories(hierarchyData, repo, sharedSynthetic);
 
-  return [aggregated, results[1], results[2]];
+  return [aggregated, results[1], results[2], results[4]];
 }
 
 // 加载结余数据并聚合

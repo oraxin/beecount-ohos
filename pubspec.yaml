@@ -1,7 +1,7 @@
 name: beecount
 description: "蜜蜂记账OH - BeeCount 的非官方 HarmonyOS 移植版 / Unofficial third-party HarmonyOS port of BeeCount."
 publish_to: 'none'
-version: 0.4.0+1
+version: 0.4.1+1
 
 environment:
   sdk: ^3.6.0
