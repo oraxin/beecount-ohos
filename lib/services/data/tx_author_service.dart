@@ -1,5 +1,7 @@
 // 共享账本:本地写 tx 后回填创建人 / 编辑人。
 // 不阻塞主流程 — auth 取不到 / 单人账本场景静默跳过,不抛错。
+import 'package:flutter_cloud_sync/flutter_cloud_sync.dart'
+    show BeeCountCloudAuthService;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/local/local_repository.dart';
@@ -39,8 +41,12 @@ class TxAuthorService {
     try {
       final cloud = await ref.read(beecountCloudProviderInstance.future);
       if (cloud == null) return;
-      final me = await cloud.auth.currentUser;
-      final userId = me?.id;
+      // 用本地 session 的同步 getter 取 userId。不能 await currentUser:
+      // 离线时它可能走 refresh / recovery login 的网络请求挂到超时,把保存
+      // 账单的提交链路堵住(按钮转圈很久)。作者字段尽力而为,取不到就跳过。
+      final auth = cloud.auth;
+      final userId =
+          auth is BeeCountCloudAuthService ? auth.currentUserId : null;
       if (userId == null || userId.isEmpty) return;
       final repo = ref.read(repositoryProvider);
       if (repo is! LocalRepository) return;
@@ -63,8 +69,10 @@ class TxAuthorService {
     try {
       final cloud = await c.read(beecountCloudProviderInstance.future);
       if (cloud == null) return;
-      final me = await cloud.auth.currentUser;
-      final userId = me?.id;
+      // 同 _markImpl:同步 getter,离线不挂网络。
+      final auth = cloud.auth;
+      final userId =
+          auth is BeeCountCloudAuthService ? auth.currentUserId : null;
       if (userId == null || userId.isEmpty) return;
       final repo = c.read(repositoryProvider);
       if (repo is! LocalRepository) return;
