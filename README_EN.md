@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-HarmonyOS-0A59F7?logo=harmonyos)
 ![Framework](https://img.shields.io/badge/Flutter-3.27.5--ohos-02569B?logo=flutter)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
-![Release](https://img.shields.io/badge/release-v0.3.1-green)
+![Release](https://img.shields.io/badge/release-v0.4.1-green)
 
 **Unofficial third-party HarmonyOS port of BeeCount**
 
@@ -34,15 +34,15 @@ BeeCount is a lightweight bookkeeping app focused on data ownership: offline-fir
 
 ## ✨ Current Status
 
-Verified on a real HarmonyOS 7.0 device as of v0.3.1:
+Verified on a real HarmonyOS 7.0 device as of v0.4.1:
 
 **✅ Ported**
 
 - Full core bookkeeping: expense / income / transfer, multiple ledgers & accounts, two-level categories, tags, recurring transactions
-- Charts (fl_chart) and annual report
+- Charts (fl_chart, with category ranking / tag ranking) and annual report
 - CSV import/export, multi-currency with conversion
 - Cloud sync: BeeCount Cloud (self-hosted server, push/pull verified on device), WebDAV / S3 (code ready)
-- AI chat bookkeeping / cloud OCR entries (Zhipu GLM / OpenAI, bring your own keys)
+- AI-powered bookkeeping: chat bookkeeping / agent ledger queries / cloud OCR (Zhipu GLM / OpenAI, bring your own keys)
 - JiQi-style transaction list (swipe to edit/delete, detail sheet) and single-page bookkeeping UI
 - Drift database via the sqflite OHOS RDB driver — 25 tables (schemaVersion 33), identical to upstream
 

@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-HarmonyOS-0A59F7?logo=harmonyos)
 ![Framework](https://img.shields.io/badge/Flutter-3.27.5--ohos-02569B?logo=flutter)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
-![Release](https://img.shields.io/badge/release-v0.3.1-green)
+![Release](https://img.shields.io/badge/release-v0.4.1-green)
 
 **蜜蜂记账的鸿蒙 HarmonyOS 第三方移植版**
 
@@ -34,15 +34,15 @@
 
 ## ✨ 当前状态
 
-以下状态基于 v0.3.1 真机（HarmonyOS 7.0）实测：
+以下状态基于 v0.4.1 真机（HarmonyOS 7.0）实测：
 
 **✅ 已适配**
 
 - 核心记账全流程：支出 / 收入 / 转账、多账本、多账户、二级分类、标签、周期记账
-- 图表分析（fl_chart）、年度报告
+- 图表分析（fl_chart，含分类排行 / 标签排行）、年度报告
 - CSV 导入导出、多币种与外币折算
 - 云同步：BeeCount Cloud（自建服务端，真机验证 push/pull）、WebDAV / S3（代码就绪）
-- AI 对话记账 / OCR 云端识别入口（依赖智谱 GLM / OpenAI，服务端自备）
+- AI 智能记账：对话记账 / Agent 账本查询 / OCR 云端识别（依赖智谱 GLM / OpenAI，服务端自备）
 - 钱迹式明细列表（左滑编辑/删除、账单详情）与单页记账界面
 - Drift 数据库经 sqflite OHOS RDB 驱动落库，25 表结构（schemaVersion 33）与上游完全一致
 
