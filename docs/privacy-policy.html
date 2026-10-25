@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蜜蜂记账OH 隐私政策</title>
+<style>
+  :root { --ink:#2b2b2b; --muted:#6b6b6b; --line:#e5e5e5; --brand:#0d9488; --bg:#fafafa; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); background:var(--bg); line-height:1.75; }
+  main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:26px; margin-bottom:4px; }
+  .meta { color:var(--muted); font-size:14px; margin-bottom:28px; }
+  h2 { font-size:19px; margin:32px 0 12px; padding-left:10px; border-left:4px solid var(--brand); }
+  p, li { font-size:15.5px; }
+  ul { padding-left:22px; margin:8px 0; }
+  li { margin:4px 0; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0; }
+  .card h3 { font-size:16px; margin-bottom:6px; }
+  .card p { color:#444; }
+  .tag { display:inline-block; font-size:12px; background:#ecfdf5; color:var(--brand); border-radius:4px; padding:1px 8px; margin-right:6px; vertical-align:2px; }
+  table { width:100%; border-collapse:collapse; margin:12px 0; background:#fff; font-size:14.5px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f3f3f3; }
+  footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>蜜蜂记账OH 隐私政策</h1>
+  <p class="meta">生效日期：2026 年 10 月 25 日 ｜ 适用版本：v0.4.2 及以上 ｜ 开发者：oraxin（个人开发者）</p>
+
+  <p>「蜜蜂记账OH」（以下简称"本应用"）是 BeeCount（蜜蜂记账）的非官方 HarmonyOS 移植版，一款在本地记录个人收支的应用。我们非常重视您的隐私。<strong>本应用的核心记账功能完全在您的设备本地运行，不需要注册账号，开发者无法访问您的任何账目数据。</strong>请您在使用前仔细阅读本政策。</p>
+
+  <h2>一、我们如何收集与使用您的信息</h2>
+
+  <div class="card">
+    <h3><span class="tag">本地处理</span>记账数据（账单、分类、账户、标签、预算等）</h3>
+    <p>您在本应用中记录的全部数据均保存在设备本地的应用沙箱内（SQLite 数据库与本地文件）。这些数据<strong>不会自动上传</strong>，开发者亦无法获取。除非您主动开启下述可选联网功能，否则本应用不进行任何网络数据传输。</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag">可选</span>云同步</h3>
+    <p>仅当您主动配置并开启云同步时，账本数据才会加密传输到<strong>您自行指定</strong>的服务器（支持自部署 BeeCount Cloud、WebDAV、S3 兼容服务）。同步范围仅限您的记账数据（账本、账单、分类、账户、标签、附件），用于多设备间保持一致。开发者不运营任何云端服务器，无法接触您同步的数据；第三方云服务的数据处理遵循对应服务商的隐私条款。</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag">可选</span>AI 智能记账（对话记账与图片识别）</h3>
+    <p>仅当您主动配置 AI 服务商（如智谱 AI、OpenAI 兼容服务）的 API Key 并使用该功能时：</p>
+    <ul>
+      <li>您输入的记账文本、选择的账单图片会直接发送到<strong>您所配置的第三方 AI 服务商</strong>，用于解析金额、分类并生成账单草稿；</li>
+      <li>请求由您的设备直接发往该服务商，不经过开发者服务器中转；</li>
+      <li>相关内容的存储与使用遵循该 AI 服务商的隐私政策与安全条款，请您在配置前查阅其条款；</li>
+      <li>您可随时在应用设置中清除 API Key 以停用该功能。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag">本地处理</span>附件图片</h3>
+    <p>您为账单添加的票据照片等附件保存在设备本地应用目录中。仅当您使用上述 AI 图片识别或云同步功能时，才会按前述规则传输。</p>
+  </div>
+
+  <p>本应用<strong>不收集</strong>您的手机号、通讯录、精确地理位置、设备标识符用于开发者自身目的，不含广告 SDK 与数据统计分析 SDK。</p>
+
+  <h2>二、权限申请说明</h2>
+  <table>
+    <tr><th>权限</th><th>用途</th><th>是否必需</th></tr>
+    <tr><td>网络访问</td><td>云同步、AI 智能记账、检查应用版本等联网功能</td><td>仅联网功能使用</td></tr>
+    <tr><td>本地存储 / 文件读写</td><td>CSV 导入导出、附件保存与读取</td><td>仅相应功能触发时使用</td></tr>
+    <tr><td>相机</td><td>拍摄票据照片作为账单附件</td><td>仅拍照时使用</td></tr>
+  </table>
+  <p>各权限仅在您使用对应功能时调用，拒绝授权不影响本地记账核心功能的使用。</p>
+
+  <h2>三、第三方服务说明</h2>
+  <ul>
+    <li><strong>华为应用市场 / AGC</strong>：应用的下载、更新与崩溃信息收集遵循华为相关协议，由华为按其隐私政策处理；</li>
+    <li><strong>您自行配置的云服务与 AI 服务商</strong>：见第一条相应条款；</li>
+    <li>本应用基于开源软件构建（Flutter 及其开源插件），开源组件本身不收集数据。</li>
+  </ul>
+
+  <h2>四、数据存储与删除</h2>
+  <ul>
+    <li><strong>本地数据</strong>：随应用卸载一并删除；您也可在系统设置中清除应用数据；</li>
+    <li><strong>云端数据</strong>：由您登录对应云服务自行删除，或依据该服务商的规则处理；</li>
+    <li>本应用自身不设用户账号体系，无云端用户数据库。</li>
+  </ul>
+
+  <h2>五、未成年人保护</h2>
+  <p>本应用面向一般大众提供记账工具服务，不面向儿童收集任何个人信息。若您是未成年人，请在监护人指导下使用本应用。</p>
+
+  <h2>六、政策的更新</h2>
+  <p>随应用功能演进，本政策可能不时更新。重大变更将在应用内公告并更新本页面的生效日期。您继续使用本应用即视为同意更新后的政策。</p>
+
+  <h2>七、联系我们</h2>
+  <p>如您对本政策或个人信息处理有任何疑问、意见或投诉，可通过以下方式联系开发者：</p>
+  <ul>
+    <li>项目主页 / Issue：<a href="https://github.com/oraxin/beecount-ohos" target="_blank" rel="noopener">https://github.com/oraxin/beecount-ohos</a></li>
+    <li>邮箱：oraxin@163.com</li>
+  </ul>
+  <p>我们将在收到反馈后尽快（原则上 15 个工作日内）回复。</p>
+
+  <footer>本政策适用于「蜜蜂记账OH」（非官方 HarmonyOS 移植版）。上游项目 BeeCount 与本移植版的隐私实践可能存在差异，以本页面为准。</footer>
+</main>
+</body>
+</html>
