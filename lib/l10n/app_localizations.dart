@@ -8159,7 +8159,7 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to BeeCount'**
+  /// **'Welcome to BeeCount-ohos'**
   String get welcomeTitle;
 
   /// No description provided for @welcomeDescription.

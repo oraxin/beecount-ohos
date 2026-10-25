@@ -30,7 +30,7 @@ BeeCount is a lightweight bookkeeping app focused on data ownership: offline-fir
 | Upstream baseline | [TNT-Likely/BeeCount](https://github.com/TNT-Likely/BeeCount) `main` (after tag `3.8.6`) |
 | Framework | CPF-Flutter `flutter_flutter` tag `3.27.5-ohos-1.0.8` |
 | Target platform | HarmonyOS (API 12+, `compatibleSdkVersion 5.0.0(12)`) |
-| App ID | `com.example.myapplication` (placeholder bundleName; replace with your own AGC package name before release) |
+| App ID | `com.oraxin.beeccountoh` |
 
 ## ✨ Current Status
 

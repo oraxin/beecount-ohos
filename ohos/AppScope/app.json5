@@ -3,8 +3,8 @@
     // ⚠️ 必须与调试 Profile(.p7b) 内的包名一致，否则签名校验失败。
     // 当前复用 MyApplication 的 AGC 调试证书（见 build-profile.json5）；
     // 正式上架前换成自己的 AGC 账号证书时同步改这里。
-    "bundleName": "com.example.myapplication",
-    "vendor": "tntlikely",
+    "bundleName": "com.oraxin.beeccountoh",
+    "vendor": "oraxin",
     "versionCode": 1000000,
     "versionName": "1.0.0",
     "icon": "$media:app_icon",

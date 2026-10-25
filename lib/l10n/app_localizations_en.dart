@@ -4288,7 +4288,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateCorruptedFileMessage => 'The previously downloaded installation package is incomplete or corrupted. Delete and re-download?';
 
   @override
-  String get welcomeTitle => 'Welcome to BeeCount';
+  String get welcomeTitle => 'Welcome to BeeCount-ohos';
 
   @override
   String get welcomeDescription => 'An accounting app that truly respects your privacy';

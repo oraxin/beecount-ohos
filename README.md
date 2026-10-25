@@ -30,7 +30,7 @@
 | 上游基线 | [TNT-Likely/BeeCount](https://github.com/TNT-Likely/BeeCount) `main`（tag `3.8.6` 之后） |
 | 技术底座 | CPF-Flutter `flutter_flutter` tag `3.27.5-ohos-1.0.8` |
 | 目标平台 | HarmonyOS（API 12+，`compatibleSdkVersion 5.0.0(12)`） |
-| 应用标识 | `com.example.myapplication`（占位 bundleName，正式发布前需更换为自己的 AGC 包名） |
+| 应用标识 | `com.oraxin.beeccountoh` |
 
 ## ✨ 当前状态
 
