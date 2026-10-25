@@ -70,7 +70,6 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final primary = ref.watch(primaryColorProvider);
-    final locale = Localizations.localeOf(context);
 
     return Scaffold(
       backgroundColor: BeeTokens.scaffoldBackground(context),
@@ -150,12 +149,10 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                           leading: Icons.favorite_border,
                           title: l10n.aboutSupportDevelopment,
                           subtitle: l10n.aboutSupportDevelopmentSubtitle,
+                          // 独立移植版:支持入口指向本项目仓库(star/关注),不再跳官方打赏页
                           onTap: () async {
-                            final lc = locale.languageCode;
-                            final docUrl = lc == 'zh'
-                                ? 'https://github.com/TNT-Likely/BeeCount/blob/main/docs/donate/README_ZH.md'
-                                : 'https://github.com/TNT-Likely/BeeCount/blob/main/docs/donate/README_EN.md';
-                            await _tryOpenUrl(Uri.parse(docUrl));
+                            await _tryOpenUrl(Uri.parse(
+                                'https://github.com/oraxin/beecount-ohos'));
                           },
                         ),
                         BeeTokens.cardDivider(context),
@@ -164,7 +161,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                           title: l10n.mineFeedback,
                           subtitle: l10n.mineFeedbackSubtitle,
                           onTap: () => _tryOpenUrl(Uri.parse(
-                              'https://github.com/TNT-Likely/BeeCount/issues')),
+                              'https://github.com/oraxin/beecount-ohos/issues')),
                         ),
                         BeeTokens.cardDivider(context),
                         AppListTile(
