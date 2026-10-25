@@ -215,13 +215,25 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                       _footerLink(
                         context,
                         label: l10n.aboutPrivacyPolicy,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => PlaceholderPage(
-                                    title: l10n.aboutPrivacyPolicy)),
-                          );
+                        // 隐私政策改为线上页面（AGC 上架审核要求可公开访问的 URL）,
+                        // 浏览器打开;启动失败时降级到占位页,保证入口永远有响应。
+                        onTap: () async {
+                          const privacyUrl =
+                              'https://beecountoh.oraxin.com/privacy-policy';
+                          try {
+                            await launchUrl(Uri.parse(privacyUrl),
+                                mode: LaunchMode.externalApplication);
+                          } catch (e) {
+                            LoggerService.error(
+                                'open privacy policy failed', e);
+                            if (!context.mounted) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => PlaceholderPage(
+                                      title: l10n.aboutPrivacyPolicy)),
+                            );
+                          }
                         },
                       ),
                     ],
