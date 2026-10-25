@@ -224,8 +224,8 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             await launchUrl(Uri.parse(privacyUrl),
                                 mode: LaunchMode.externalApplication);
                           } catch (e) {
-                            LoggerService.error(
-                                'open privacy policy failed', e);
+                            LoggerService()
+                                .error('AboutPage', 'open privacy policy failed', e);
                             if (!context.mounted) return;
                             Navigator.push(
                               context,
