@@ -4288,7 +4288,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateCorruptedFileMessage => '检测到之前下载的安装包不完整或已损坏，是否删除并重新下载？';
 
   @override
-  String get welcomeTitle => '欢迎使用 BeeCount';
+  String get welcomeTitle => '欢迎使用蜜蜂记账OH';
 
   @override
   String get welcomeDescription => '一个真正尊重您隐私的记账应用';
@@ -13007,7 +13007,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get updateCorruptedFileMessage => '檢測到之前下載的安裝包不完整或已損壞，是否刪除並重新下載？';
 
   @override
-  String get welcomeTitle => '歡迎使用 BeeCount';
+  String get welcomeTitle => '歡迎使用蜜蜂記帳OH';
 
   @override
   String get welcomeDescription => '一個真正尊重您隱私的記帳應用';

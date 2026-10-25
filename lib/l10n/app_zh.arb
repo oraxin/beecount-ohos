@@ -1686,7 +1686,7 @@
   "accountHiddenToast": "已隐藏",
   "accountRestoredToast": "已恢复",
   "privacyOpenSourceUrlError": "无法打开链接",
-  "welcomeTitle": "欢迎使用 BeeCount",
+  "welcomeTitle": "欢迎使用蜜蜂记账OH",
   "welcomeDescription": "一个真正尊重您隐私的记账应用",
   "welcomeCurrencyDescription": "选择您常用的货币，之后可以随时在设置中更改",
   "welcomeCreateDefaultLedger": "创建默认账本",

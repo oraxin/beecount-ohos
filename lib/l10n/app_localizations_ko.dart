@@ -4288,7 +4288,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get updateCorruptedFileMessage => '이전에 다운로드한 설치 패키지가 불완전하거나 손상되었습니다. 삭제하고 다시 다운로드하시겠습니까?';
 
   @override
-  String get welcomeTitle => 'BeeCount에 오신 것을 환영합니다';
+  String get welcomeTitle => 'BeeCount-ohos에 오신 것을 환영합니다';
 
   @override
   String get welcomeDescription => '사용자의 개인정보를 진심으로 존중하는 가계부 앱';
